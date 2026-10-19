@@ -1,0 +1,14 @@
+{
+  "name": "nadu-wedding",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "schema": "wrangler d1 execute nadu-wedding-db --remote --file=./schema.sql",
+    "test": "node --experimental-sqlite test/worker.test.mjs"
+  },
+  "devDependencies": {
+    "wrangler": "^4.40.0"
+  }
+}

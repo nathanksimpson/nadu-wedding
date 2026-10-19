@@ -1,0 +1,16 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "nadu-wedding",
+  "main": "./src/worker.js",
+  "compatibility_date": "2026-10-13",
+  "assets": {
+    "directory": "./public/",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  },
+  "d1_databases": [
+    { "binding": "DB", "database_name": "nadu-wedding-db", "database_id": "1a54d78d-0198-4d95-92da-e4d4e154649c" }
+  ],
+  "vars": { "MAX_USERS": "4" },
+  "observability": { "enabled": true }
+}
