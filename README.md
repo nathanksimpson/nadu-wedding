@@ -1,67 +1,61 @@
-# 나단 & 두연 웨딩 — Cloudflare deploy
+# Nadu Wedding Planner · 나두 웨딩 플래너
 
-One Cloudflare Worker serves the page and a small API. All shared data lives in the D1 database
-`nadu-wedding-db`, which is already created in your Cloudflare account with its tables set up.
+A wedding & first-home budget planner for couples: budget plan with venue comparison, checklist,
+spending & family split, guests, gift money, vendor quotes, version history and exports.
+One Cloudflare Worker serves the page (`public/`) and the API (`src/worker.js`); data lives in D1.
 
-## Deploy (about 5 minutes, once)
+## Accounts and plans
 
-You need Node.js 20 or newer to deploy. `npm test` needs Node.js 22.5 or newer.
+- **Public sign-up** with email + password (no invite code). Sign-ups are rate-limited per IP; set
+  `TURNSTILE_SITEKEY` (var) and `TURNSTILE_SECRET` (secret) to add Cloudflare Turnstile bot protection.
+- Each couple works in a **plan**. Members: **owner** (names, invites, members), **editor**, **viewer**
+  (read-only, e.g. parents). Owners invite with a single-use code/link valid for 7 days.
+- Every data request names its plan (`X-Plan-Id`) and is checked against membership on the server;
+  the tests include attempts to read, write, export or restore across plans.
+- **Access:** new plans get a free trial (`TRIAL_DAYS`, default 14). After that the plan is read-only
+  (viewing and export still work) until an admin records a payment in the **Admin** tab
+  (+30 days / +1 year). **AI features** are a separate paid switch per plan; admins always have them.
+- **Admin:** the first account on an empty site, or the original owner after migration.
+- **Password reset** by email via [Resend](https://resend.com): set secrets `RESEND_API_KEY` and
+  `MAIL_FROM` (e.g. `Nadu Wedding Planner <noreply@yourdomain>`). Without them, the admin can create a
+  reset link in the Admin tab and pass it on.
+- Optional var `CONTACT_EMAIL` is shown to couples whose access has ended.
+- Users can delete their account in Settings; a plan whose last member leaves is deleted with its data.
+
+## Environments
+
+| | Worker | Database | Deployed by |
+|---|---|---|---|
+| Live | `nadu-wedding` | `nadu-wedding-db` | push to `main` |
+| Staging | `nadu-wedding-staging` | `nadu-wedding-staging-db` | push to `staging` |
+
+GitHub Actions deploys with the repo secrets `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID`.
+Staging pages show a yellow **STAGING** bar.
+
+## Database changes
+
+`schema.sql` is the full schema for a brand-new database. Existing databases are upgraded with the
+files in `migrations/`, run once, **before** deploying code that needs them:
 
 ```bash
-cd nadu-wedding
-npm install
-npx wrangler login                    # opens the browser to authorize your Cloudflare account
-npx wrangler secret put INVITE_CODE   # type a code you'll share with 두연, e.g. a long random phrase
-npm run deploy
+npm run migrate:staging   # staging database
+npm run migrate           # live database
 ```
 
-Wrangler prints the address, e.g. `https://nadu-wedding.<your-subdomain>.workers.dev`.
+`0002_plans.sql` is additive: it moves the original shared plan into plan #1 (its first account becomes
+owner and admin) and leaves the old `docs`/`history` tables untouched for rollback.
 
-## First sign-in
+## Release checklist (staging → live)
 
-1. Open the address, choose **처음이세요? 초대 코드로 가입하기**, and create your account with the invite code.
-2. Send 두연 the address and the invite code so she can create hers.
-3. Up to 4 accounts can be created (`MAX_USERS` in `wrangler.jsonc`). Once you both have accounts you can
-   change the invite code with `npx wrangler secret put INVITE_CODE` so nobody else can sign up.
+1. Test on staging.
+2. Back up live: `npx wrangler d1 export nadu-wedding-db --remote --output backup.sql`
+3. Run pending migrations on live (`npm run migrate`).
+4. Merge `staging` into `main` and push; GitHub Actions deploys.
 
-To bring over what you entered in the Claude version: open it, press **가져오기·내보내기**, copy the JSON,
-then paste it into the same box in the deployed app and press **불러오기**.
+## Develop
 
-## How editing by two people works
-
-- The plan is stored as separate sections (budget, venues, expenses, guests, gift money, checklist…),
-  each with a version number.
-- A save only lands if it was made against the latest version. If the other person saved first, the
-  server returns their copy, the app merges both edits record by record and field by field, and saves
-  again. Different records and different fields never overwrite each other. If you both change the very
-  same field at the same moment, the later save wins and the other value stays in the history.
-- Each browser checks for the other person's changes every 4 seconds while the tab is open, and saves
-  immediately when you switch away from the tab.
-
-## History and export
-
-- **변경 기록 · History** tab: every saved version of every section, who saved it and when. Any version
-  can be restored; restoring adds a new version, so nothing is lost. The last 300 versions per section are kept.
-- Exports: all data as JSON (re-importable), CSV for expenses, guests, gift money, vendors and the history
-  (CSV files include a BOM so Excel shows Korean correctly), plus the printable report.
-
-## Files
-
-- `public/index.html` — the app
-- `src/worker.js` — API: sign-in, sections with version checks, history, restore, export
-- `schema.sql` — database tables (already applied; `npm run schema` re-applies safely)
-- `test/worker.test.mjs` — API tests against an in-memory SQLite (`npm test`)
-
-## Staging (test copy)
-
-A separate Worker, `nadu-wedding-staging`, with its own empty database `nadu-wedding-staging-db`
-(already created, tables set up). Nothing done there can touch the real app's data. Every page in
-staging shows a yellow **STAGING** bar and the tab title starts with `[STAGING]`.
-
-- **Deploy:** push to the `staging` branch (GitHub Actions deploys it), or run `npm run deploy:staging`.
-- **Go live:** merge `staging` into `main`; pushing `main` deploys the real app.
-- **Once, before first use:** `npm run secret:staging` to set a staging invite code, then sign up there
-  with test accounts.
-- **Test with real-looking data:** export JSON from the live app (History tab → 전체 데이터) and load it
-  in staging via 가져오기·내보내기 → 불러오기.
-- **Local:** `npm run dev` runs everything on your PC with a local database.
+```bash
+npm install
+npm test          # API + migration tests (Node 22.5+)
+npm run dev       # local Worker with a local database
+```

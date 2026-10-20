@@ -4,12 +4,14 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
-    "test": "node --experimental-sqlite test/worker.test.mjs",
+    "test": "node --experimental-sqlite test/worker.test.mjs && node --experimental-sqlite test/migration.test.mjs",
     "deploy": "wrangler deploy",
     "deploy:staging": "wrangler deploy --env staging",
     "schema": "wrangler d1 execute nadu-wedding-db --remote --file=./schema.sql",
     "schema:staging": "wrangler d1 execute nadu-wedding-staging-db --env staging --remote --file=./schema.sql",
-    "secret:staging": "wrangler secret put INVITE_CODE --env staging"
+    "secret:staging": "wrangler secret put INVITE_CODE --env staging",
+    "migrate": "wrangler d1 execute nadu-wedding-db --remote --file=./migrations/0002_plans.sql",
+    "migrate:staging": "wrangler d1 execute nadu-wedding-staging-db --env staging --remote --file=./migrations/0002_plans.sql"
   },
   "devDependencies": {
     "wrangler": "^4.40.0"

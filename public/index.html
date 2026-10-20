@@ -4,7 +4,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex">
-<title>나단 &amp; 두연 웨딩</title>
+<title>Nadu Wedding Planner</title>
+<meta name="description" content="둘이 함께 쓰는 결혼·신혼집 예산 플래너 · A wedding & first-home budget planner for two">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Gowun+Batang:wght@400;700&family=IBM+Plex+Sans+KR:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
 /* Layout: names + countdown hero, sticky top tabs, one panel per job; rose & gold on blush paper (from the couple's tracker) */
@@ -328,6 +329,28 @@ form.entry .split-f.hide { display: none; }
 .env-banner { position: sticky; top: 0; z-index: 50; background: repeating-linear-gradient(135deg, #f2c94c 0 14px, #f7dc7a 14px 28px); color: #3b2a00; text-align: center; font: 600 13px/1.4 var(--body); letter-spacing: .04em; padding: 6px 12px; padding-top: calc(6px + env(safe-area-inset-top, 0px)); }
 .gate .env-banner { position: absolute; top: 0; left: 0; right: 0; }
 @media print { .env-banner { display: none !important; } }
+/* plans, settings, admin */
+.plan-bar { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.plan-bar select { width: auto; font-size: 12.5px; padding: 3px 8px; }
+.ro-banner { background: var(--warn-soft); color: var(--warn); border-radius: var(--r-sm); padding: 10px 14px; font-size: 13.5px; }
+.settings-body { display: flex; flex-direction: column; gap: 16px; }
+.kvline { display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 13.5px; border-top: 1px solid var(--line); padding-top: 8px; }
+.kvline span { color: var(--muted); }
+.invite-out { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: center; margin-top: 6px; }
+.invite-out .small { grid-column: 1 / -1; margin: 0; }
+.invite-code { font-size: 22px; letter-spacing: .08em; color: var(--accent); }
+.invite-link { font-family: var(--mono); font-size: 12px; }
+.danger-zone { border-color: var(--bad-soft); }
+.warn-text { color: var(--warn); }
+.onboard { display: flex; flex-direction: column; gap: 12px; }
+.ob-card { border: 1px solid var(--line); border-radius: var(--r-sm); padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.gate-card .amp { color: var(--accent); font-weight: 400; }
+.gate-tag { margin: -6px 0 0; }
+.gate-links { display: flex; flex-direction: column; gap: 6px; align-items: flex-start; }
+.gate-msg { color: var(--good); margin: 0; }
+.privacy-text { background: var(--sunk); border-radius: var(--r-sm); padding: 10px; margin: 6px 0 0; line-height: 1.6; }
+.gate-lang { align-self: center; }
+body.readonly .tabpanel:not([data-panel="settings"]):not([data-panel="admin"]) :is(input, select, textarea):disabled { background: var(--sunk); color: var(--ink); opacity: 1; }
 /* sign-in gate & sync status */
 .gate { position: fixed; inset: 0; z-index: 40; background: var(--bg); display: grid; place-items: center; padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); overflow-y: auto; }
 .gate-card { width: min(100%, 24rem); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 28px 24px; display: flex; flex-direction: column; gap: 14px; }
@@ -372,8 +395,9 @@ body.gated .wrap { visibility: hidden; }
       <button id="btn-io" type="button" data-t="io"></button>
       <button id="btn-reset" type="button" class="danger" data-t="reset"></button>
     </div>
-    <div class="userbar" style="flex-basis:100%"><span class="who" id="who"></span><span class="sync" id="sync-status" role="status" aria-live="polite"></span><button type="button" id="btn-logout" data-t="logout"></button></div>
+    <div class="userbar" style="flex-basis:100%"><span class="who" id="who"></span><span class="sync" id="sync-status" role="status" aria-live="polite"></span><span class="plan-bar" id="plan-bar"></span><button type="button" id="btn-logout" data-t="logout"></button></div>
   </header>
+  <div class="ro-banner app" id="ro-banner" role="status" hidden></div>
 
   <div class="hero app">
     <div class="count" id="dd-count">D-?<small id="dd-sub"></small></div>
@@ -549,6 +573,21 @@ body.gated .wrap { visibility: hidden; }
     </section>
   </div>
 
+  <div class="tabpanel app" data-panel="settings">
+    <section id="settings" class="app">
+      <div class="sec-head"><h2 data-t="tSettings"></h2></div>
+      <div id="settings-body" class="settings-body"></div>
+    </section>
+  </div>
+
+  <div class="tabpanel app" data-panel="admin">
+    <section id="admin" class="app">
+      <div class="sec-head"><h2 data-t="adTitle"></h2></div>
+      <p class="small" data-t="adHelp" style="margin:0"></p>
+      <div id="admin-body"></div>
+    </section>
+  </div>
+
   <section id="report-sec" hidden>
     <div class="report-bar">
       <span class="small" data-t="printHelp"></span>
@@ -559,17 +598,51 @@ body.gated .wrap { visibility: hidden; }
   </section>
 </div>
 <div class="gate" id="gate" hidden>
-  <form class="gate-card" id="gate-form" autocomplete="on">
-    <div class="eyebrow" data-t="eyebrow"></div>
-    <h1>나단 <span class="amp" style="color:var(--accent);font-weight:400">&amp;</span> 두연</h1>
+  <form class="gate-card" id="gate-form" autocomplete="on" novalidate>
+    <div class="eyebrow">Nadu Wedding Planner</div>
+    <h1>나두 <span class="amp">웨딩</span></h1>
+    <p class="small gate-tag" data-t="gTagline"></p>
     <h2 id="gate-title"></h2>
-    <label class="f" for="g-user"><span data-t="gUser"></span><input id="g-user" name="username" autocomplete="username" autocapitalize="none" required></label>
-    <label class="f signup-only" for="g-display" hidden><span data-t="gDisplay"></span><input id="g-display" name="display" maxlength="40"></label>
-    <label class="f" for="g-pass"><span data-t="gPass"></span><input id="g-pass" name="password" type="password" autocomplete="current-password" required minlength="8"></label>
-    <label class="f signup-only" for="g-invite" hidden><span data-t="gInvite"></span><input id="g-invite" name="invite" autocomplete="off"></label>
+
+    <label class="f gv-login gv-signup gv-forgot" for="g-email"><span data-t="gEmailOrId" class="gv-login"></span><span data-t="gEmail" class="gv-signup gv-forgot"></span><input id="g-email" name="email" type="email" autocomplete="username" autocapitalize="none" spellcheck="false"></label>
+    <label class="f gv-signup" for="g-display"><span data-t="gName"></span><input id="g-display" name="display" maxlength="40" autocomplete="nickname"></label>
+    <label class="f gv-login gv-signup" for="g-pass"><span data-t="gPass"></span><input id="g-pass" name="password" type="password" autocomplete="current-password" minlength="8"></label>
+    <label class="f gv-reset" for="g-newpass"><span data-t="gNewPass"></span><input id="g-newpass" name="new-password" type="password" autocomplete="new-password" minlength="8"></label>
+    <div class="gv-signup">
+      <label class="check" for="g-agree"><input id="g-agree" type="checkbox"> <span data-t="gAgree"></span></label>
+      <button type="button" class="link" id="g-privacy-link" data-t="gPrivacy"></button>
+      <p class="small privacy-text" id="g-privacy" hidden></p>
+      <div id="g-turnstile"></div>
+    </div>
+
+    <div class="gv-onboard onboard">
+      <p class="small" data-t="obHelp"></p>
+      <div class="ob-card">
+        <h3 data-t="obNew"></h3>
+        <div class="fields"><label class="f" for="ob-a"><span data-t="obA"></span><input id="ob-a" maxlength="30"></label><label class="f" for="ob-b"><span data-t="obB"></span><input id="ob-b" maxlength="30"></label></div>
+        <p class="small" id="ob-trial"></p>
+        <button type="button" class="primary" id="ob-create" data-t="obCreate"></button>
+      </div>
+      <div class="ob-card">
+        <h3 data-t="obJoin"></h3>
+        <label class="f" for="ob-code"><span data-t="obCode"></span><input id="ob-code" class="mono" autocapitalize="characters" spellcheck="false" placeholder="ABCDE-FGHJK"></label>
+        <button type="button" id="ob-join" data-t="obJoinBtn"></button>
+      </div>
+    </div>
+
     <p class="gate-err" id="gate-err" role="alert"></p>
-    <button type="submit" class="primary" id="gate-submit"></button>
-    <button type="button" class="link" id="gate-toggle"></button>
+    <p class="gate-msg small" id="gate-msg" role="status"></p>
+    <button type="submit" class="primary gv-login" id="gate-submit" data-t="gLogin"></button>
+    <button type="submit" class="primary gv-signup" data-t="gSignup"></button>
+    <button type="submit" class="primary gv-forgot" data-t="gSendLink"></button>
+    <button type="submit" class="primary gv-reset" data-t="gSetPass"></button>
+    <div class="gate-links">
+      <button type="button" class="link gv-login" data-goto="signup" data-t="gToSignup"></button>
+      <button type="button" class="link gv-login" data-goto="forgot" data-t="gToForgot"></button>
+      <button type="button" class="link gv-signup gv-forgot gv-reset" data-goto="login" data-t="gToLogin"></button>
+      <button type="button" class="link gv-onboard" id="ob-logout" data-t="logout"></button>
+    </div>
+    <div class="seg gate-lang" role="group" aria-label="Language"><button type="button" data-lang="ko">한국어</button><button type="button" data-lang="en">English</button></div>
   </form>
 </div>
 <div class="tip" id="tip"></div>
@@ -1124,7 +1197,7 @@ body.gated .wrap { visibility: hidden; }
     if (!M.sel) { $('walk-title').textContent = ''; w.innerHTML = ''; w.append(el('p', { class: 'small', text: T('noVenue') })); }
     else { $('walk-title').textContent = `${nm(M.sel.v)} · ${T('tiers')[t]}`; const nw = walkSteps(M, M.sel); nw.id = 'walk'; nw.className = 'panel walk'; w.replaceWith(nw); }
     updateSums(M);
-    if (typeof S.tab === 'string' && !['plan', 'list', 'history'].includes(S.tab)) renderPanel();
+    if (typeof S.tab === 'string' && !['plan', 'list', 'history', 'settings', 'admin'].includes(S.tab)) renderPanel();
     if (!$('report-sec').hidden) buildReport();
   }
 
@@ -1325,12 +1398,12 @@ body.gated .wrap { visibility: hidden; }
   const BCATS = [['hall', '웨딩홀 (대관·식대)', 'Venue & catering'], ['sdm', '스드메', 'Studio, dress & makeup'], ['snap', '본식 스냅·영상', 'Ceremony photo & video'],
     ['jewel', '예물·반지', 'Rings & jewelry'], ['yedan', '예단·폐백', 'Yedan & pyebaek'], ['hanbok', '혼주 한복', "Parents' hanbok"], ['attire', '신랑 예복 (턱시도)', "Groom's tuxedo"],
     ['invite', '청첩장·답례품', 'Invitations & favors'], ['honey', '신혼여행', 'Honeymoon'], ['house', '신혼집 (자기자본)', 'New home (down payment)'], ['home', '혼수·가전', 'Appliances & household'], ['car', '중고차', 'Used car'], ['etc', '기타', 'Other']];
-  const PARTIES = [['g', '신랑 (나단)', 'Groom (Nathan)'], ['b', '신부 (두연)', 'Bride (Duyeon)'], ['gp', '신랑 부모님', "Groom's parents"], ['bp', '신부 부모님', "Bride's parents"]];
+  const PARTIES = [['g', '신랑', 'Groom'], ['b', '신부', 'Bride'], ['gp', '신랑 부모님', "Groom's parents"], ['bp', '신부 부모님', "Bride's parents"]];
   const pick3 = (arr, k) => { const r = arr.find((x) => x[0] === k); return r ? (S.lang === 'en' ? r[2] : r[1]) : k; };
   const cname = (k) => pick3(BCATS, k), pname = (k) => pick3(PARTIES, k);
 
   Object.assign(L.ko, {
-    eyebrow: '나두커플 결혼·신혼집 준비', tDash: '대시보드', tPlan: '예산 계획', tList: '체크리스트', tSpend: '지출·정산', tGuests: '하객', tGifts: '축의금', tVendors: '업체 비교',
+    eyebrow: 'Nadu Wedding Planner · 나두 웨딩 플래너', tDash: '대시보드', tPlan: '예산 계획', tList: '체크리스트', tSpend: '지출·정산', tGuests: '하객', tGifts: '축의금', tVendors: '업체 비교',
     wd: '예식 날짜', prog: '준비 진행률', nodate: '예식 날짜를 넣으면 단계별 실제 날짜가 계산돼요', dday: '예식 당일',
     all: '전체', open: '남은 일', late: '밀린 일', key: '핵심', tipL: 'TIP', add: '추가', addph: '우리만의 할 일 추가', now: '지금 할 차례', overdue: '밀린 일 ', mine: '직접 추가',
     dUp: '다가오는 할 일', dStage: '시기별 진행률', upEmpty: '남은 할 일이 없어요', upNoDate: '예식 날짜를 넣으면 날짜순으로 보여드려요',
@@ -1349,7 +1422,7 @@ body.gated .wrap { visibility: hidden; }
     repPrep: '준비 현황', repSpend: '지출·정산', repPeople: '하객·축의금'
   });
   Object.assign(L.en, {
-    eyebrow: 'Team Nadu wedding & home planning', tDash: 'Dashboard', tPlan: 'Budget plan', tList: 'Checklist', tSpend: 'Spending & split', tGuests: 'Guests', tGifts: 'Gift money', tVendors: 'Vendors',
+    eyebrow: 'Nadu Wedding Planner', tDash: 'Dashboard', tPlan: 'Budget plan', tList: 'Checklist', tSpend: 'Spending & split', tGuests: 'Guests', tGifts: 'Gift money', tVendors: 'Vendors',
     wd: 'Wedding date', prog: 'Progress', nodate: 'Set the wedding date to see real dates for each stage', dday: 'Wedding day',
     all: 'All', open: 'To do', late: 'Overdue', key: 'Key', tipL: 'TIP', add: 'Add', addph: 'Add our own task', now: 'Up now', overdue: 'Overdue ', mine: 'Added by us',
     dUp: 'Coming up', dStage: 'Progress by stage', upEmpty: 'Nothing left to do', upNoDate: 'Set the wedding date to sort these by date',
@@ -1408,25 +1481,28 @@ body.gated .wrap { visibility: hidden; }
   function rowActs(onEdit, onDel) { return el('td', {}, el('div', { class: 'rowacts' }, onEdit ? Object.assign(el('button', { type: 'button', text: T('edit') }), { onclick: onEdit }) : null, delBtn('Delete', onDel))); }
 
   // ---------- header, tabs ----------
-  const TABS = [['dash', 'tDash'], ['plan', 'tPlan'], ['list', 'tList'], ['spend', 'tSpend'], ['guests', 'tGuests'], ['gifts', 'tGifts'], ['vendors', 'tVendors'], ['history', 'tHistory']];
+  const TABS = [['dash', 'tDash'], ['plan', 'tPlan'], ['list', 'tList'], ['spend', 'tSpend'], ['guests', 'tGuests'], ['gifts', 'tGifts'], ['vendors', 'tVendors'], ['history', 'tHistory'], ['settings', 'tSettings'], ['admin', 'tAdmin']];
   function renderTabs() {
     const nav = $('tabs'); nav.innerHTML = '';
-    TABS.forEach(([k, lab]) => {
+    visibleTabs().forEach(([k, lab]) => {
       const b = el('button', { type: 'button', role: 'tab', 'aria-selected': String(S.tab === k), id: 'tab-' + k, text: T(lab) });
       b.addEventListener('click', () => { S.tab = k; save(); applyTab(); window.scrollTo({ top: 0 }); });
       nav.append(b);
     });
   }
+  const visibleTabs = () => TABS.filter(([k]) => k !== 'admin' || (Sync.me && Sync.me.is_admin));
   function applyTab() {
-    if (!TABS.some(([k]) => k === S.tab)) S.tab = 'dash';
+    if (!visibleTabs().some(([k]) => k === S.tab)) S.tab = 'dash';
     document.querySelectorAll('.tabpanel').forEach((p) => p.classList.toggle('off', p.dataset.panel !== S.tab));
     TABS.forEach(([k]) => $('tab-' + k)?.setAttribute('aria-selected', String(k === S.tab)));
     renderPanel();
   }
-  function renderPanel() { ({ dash: renderDash, list: renderList, spend: renderSpend, guests: renderGuests, gifts: renderGifts, vendors: renderVendors, history: () => renderHistory(true) }[S.tab] || (() => {}))(); prepSums(); }
+  function renderPanel() { ({ dash: renderDash, list: renderList, spend: renderSpend, guests: renderGuests, gifts: renderGifts, vendors: renderVendors, history: () => renderHistory(true), settings: renderSettings, admin: renderAdmin }[S.tab] || (() => {}))(); prepSums(); }
   function renderHeader() {
     const h = $('title-h1'); h.innerHTML = '';
-    h.append(S.lang === 'en' ? 'Nathan ' : '나단 ', el('span', { class: 'amp', text: '&' }), S.lang === 'en' ? ' Duyeon' : ' 두연');
+    const pl = Sync.plan || {};
+    if (pl.partner_a || pl.partner_b) h.append(pl.partner_a || '', el('span', { class: 'amp', text: ' & ' }), pl.partner_b || '');
+    else h.append(pl.name || 'Nadu Wedding Planner');
     const [main, sub] = ddText(); const c = $('dd-count'); c.firstChild.textContent = main; $('dd-sub').textContent = sub;
     if (document.activeElement !== $('wd')) $('wd').value = S.wedding || '';
     const items = allItems(), d = items.filter((i) => isDone(i.id)).length;
@@ -1795,9 +1871,9 @@ body.gated .wrap { visibility: hidden; }
   // edits (record by record, field by field) and try again. Every saved version is kept as history.
   const SHARED = ['budget', 'selectedVenue', 'selectedLoan', 'venues', 'nonVenue', 'afterCosts', 'honsu', 'categories', 'loans', 'seeded',
     'wedding', 'checks', 'tasks', 'expenses', 'split', 'guests', 'guestRate', 'giftLog', 'vendors'];
-  const PREFS = ['lang', 'skin', 'tab', 'collapsed', 'report'];
+  const PREFS = ['lang', 'skin', 'tab', 'collapsed', 'report', 'planId'];
   const PREF_KEY = 'nadu-wedding-prefs-v1';
-  const Sync = { me: null, users: {}, base: {}, ver: {}, seq: 0, timer: null, inflight: false, again: false, merged: false, poller: null, lastEdit: null, status: 'idle' };
+  const Sync = { me: null, plans: [], planId: null, plan: null, users: {}, base: {}, ver: {}, seq: 0, timer: null, inflight: false, again: false, merged: false, poller: null, lastEdit: null, status: 'idle' };
   const clone = (v) => v === undefined ? undefined : JSON.parse(JSON.stringify(v));
   const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
   const isObj = (v) => v && typeof v === 'object' && !Array.isArray(v);
@@ -1863,7 +1939,8 @@ body.gated .wrap { visibility: hidden; }
   // ---------- api ----------
   async function api(path, opts = {}) {
     try {
-      const r = await fetch('/api' + path, { method: opts.method || 'GET', credentials: 'same-origin', headers: { 'content-type': 'application/json' }, body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined });
+      const headers = { 'content-type': 'application/json' }; if (Sync.planId) headers['x-plan-id'] = String(Sync.planId);
+      const r = await fetch('/api' + path, { method: opts.method || 'GET', credentials: 'same-origin', headers, body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined });
       let data = null; try { data = await r.json(); } catch (e) {}
       return { ok: r.ok, status: r.status, data };
     } catch (e) { return { ok: false, status: 0, data: { error: 'network' } }; }
@@ -1893,7 +1970,7 @@ body.gated .wrap { visibility: hidden; }
   // ---------- saving ----------
   function scheduleSync() {
     savePrefs();
-    if (!Sync.me) return;
+    if (!Sync.me || !Sync.planId || !(Sync.plan && Sync.plan.writable)) return;
     clearTimeout(Sync.timer);
     if (SHARED.some((k) => !same(S[k], Sync.base[k]))) { setStatus('saving'); Sync.timer = setTimeout(flush, 600); }
   }
@@ -1915,6 +1992,7 @@ body.gated .wrap { visibility: hidden; }
             continue;
           }
           if (r.status === 401) { Sync.me = null; showGate('login'); return; }
+          if (r.status === 403 && r.data && r.data.access !== undefined) { updatePlanView({ ...Sync.plan, writable: false, access: r.data.access }); toast(errText(r)); return; }
           failed = true; break;
         }
       }
@@ -1932,12 +2010,13 @@ body.gated .wrap { visibility: hidden; }
 
   // ---------- receiving ----------
   async function poll() {
-    if (!Sync.me || Sync.inflight || document.hidden) return;
+    if (!Sync.me || !Sync.planId || Sync.inflight || document.hidden) return;
     const r = await api('/changes?since=' + Sync.seq);
     if (r.status === 401) { Sync.me = null; showGate('login'); return; }
     if (!r.ok) { setStatus('offline'); return; }
     if (Sync.status === 'offline') setStatus('saved');
     if (r.data.users) Sync.users = r.data.users;
+    if (r.data.plan) updatePlanView(r.data.plan);
     let changed = false;
     (r.data.docs || []).forEach((d) => {
       noteEdit(d.updated_by, d.updated_at);
@@ -1968,65 +2047,403 @@ body.gated .wrap { visibility: hidden; }
     ensurePrep();
   }
 
-  // ---------- sign-in gate ----------
-  let gateMode = 'login';
+  // ================= accounts, plans, settings, admin =================
+  Object.assign(L.ko, {
+    appName: 'Nadu Wedding Planner', appNameKo: '나두 웨딩 플래너',
+    gEmail: '이메일', gEmailOrId: '이메일 (예전 계정은 아이디)', gName: '이름 (상대에게 보이는 이름)', gNewPass: '새 비밀번호 (8자 이상)',
+    gTitleLogin: '로그인', gTitleSignup: '무료 체험 시작하기', gTitleForgot: '비밀번호 찾기', gTitleReset: '새 비밀번호 설정',
+    gToSignup: '처음이세요? 계정 만들기', gToLogin: '이미 계정이 있어요 · 로그인', gToForgot: '비밀번호를 잊었어요',
+    gAgree: '개인정보 안내를 읽었고 동의합니다', gPrivacy: '개인정보 안내', gSendLink: '재설정 링크 보내기', gSetPass: '비밀번호 저장',
+    gSent: '계정이 있다면 재설정 링크를 이메일로 보냈어요. 메일이 오지 않으면 관리자에게 문의하세요.',
+    gTagline: '둘이 함께 쓰는 결혼·신혼집 예산 플래너',
+    gErr: { bad_login: '이메일이나 비밀번호가 맞지 않아요.', bad_email: '이메일 주소를 확인해 주세요.', email_taken: '이미 가입된 이메일이에요. 로그인하거나 비밀번호를 찾아보세요.', weak_password: '비밀번호는 8자 이상이어야 해요.', no_name: '이름을 입력해 주세요.', must_agree: '개인정보 안내에 동의해야 가입할 수 있어요.', too_many_attempts: '시도가 너무 많아요. 잠시 뒤에 다시 해 주세요.', bot_check_failed: '자동 가입 방지 확인을 다시 해 주세요.', bad_reset_link: '링크가 만료됐거나 이미 사용됐어요. 다시 요청해 주세요.', bad_invite: '초대 코드가 맞지 않거나 만료됐어요.', plan_limit: '만들 수 있는 플랜 수를 넘었어요.', bad_password: '현재 비밀번호가 맞지 않아요.', last_owner: '소유자가 최소 한 명은 있어야 해요.', last_member: '마지막 멤버는 나갈 수 없어요. 계정 삭제를 이용하세요.', owner_only: '플랜 소유자만 할 수 있어요.', read_only: '읽기 전용이에요.', plan_expired: '이용 기간이 끝나 읽기 전용이에요.', network: '서버에 연결할 수 없어요.' },
+    obTitle: '플랜 시작하기', obHelp: '새 플랜을 만들거나, 상대가 보낸 초대 코드로 참여하세요.', obNew: '새 플랜 만들기', obJoin: '초대 코드로 참여',
+    obA: '신랑 이름', obB: '신부 이름', obCreate: '플랜 만들기', obCode: '초대 코드', obJoinBtn: '참여하기', obTrial: (d) => `새 플랜은 ${d}일 동안 무료로 체험할 수 있어요.`,
+    tSettings: '설정', tAdmin: '관리자',
+    accTrial: (d) => `체험 중 · ${d}일 남음`, accActive: '이용 중', accActiveUntil: (d) => `이용 중 · ${d}까지`, accExpired: '이용 기간 만료 · 읽기 전용', accViewer: '보기 전용',
+    roBanner: { expired: '이용 기간이 끝나 읽기 전용이에요. 데이터 보기와 내보내기는 계속할 수 있어요.', viewer: '보기 전용 멤버예요. 편집은 소유자나 편집자만 할 수 있어요.' },
+    payHow: '이용 연장·AI 기능 신청은 관리자에게 문의해 주세요.', contact: '문의',
+    sPlan: '플랜', sNames: '이름', sSaveNames: '이름 저장', sMembers: '멤버', sInvite: '초대하기', sInviteHelp: '코드나 링크를 상대에게 보내세요. 7일 동안 한 번 사용할 수 있어요.',
+    sRoleEditor: '편집자 (함께 수정)', sRoleViewer: '보기 전용 (예: 부모님)', sMakeInvite: '초대 코드 만들기', sOpenInvites: (k) => `사용 전 초대 ${k}개`, sRevoke: '취소',
+    rOwner: '소유자', rEditor: '편집자', rViewer: '보기 전용', sRemove: '내보내기', sLeave: '플랜에서 나가기', sYou: '나',
+    sStatus: '이용 상태', sAI: 'AI 기능 (견적 자동 읽기 등)', sAIon: '사용 가능', sAIoff: '유료 추가 기능 · 관리자에게 신청',
+    sAccount: '내 계정', sEmailNeeded: '이메일을 등록하면 비밀번호를 잊었을 때 재설정할 수 있어요.', sSave: '저장', sChangePass: '비밀번호 변경', sCurPass: '현재 비밀번호', sNewPass: '새 비밀번호',
+    sDanger: '계정 삭제', sDeleteHelp: '계정을 삭제하면 다시 되돌릴 수 없어요. 내가 마지막 멤버인 플랜은 모든 데이터와 함께 삭제돼요. 먼저 내보내기로 백업하세요.', sDeleteBtn: '계정 영구 삭제', sDeletePw: '확인용 비밀번호',
+    sNewPlan: '다른 플랜 만들기', saved: '저장했어요', copied2: '복사했어요', planSwitch: '플랜',
+    adTitle: '관리자 · 플랜과 결제', adHelp: '결제를 받은 뒤 기간을 연장하고, AI 기능을 켜거나 끄세요. 이메일 발송이 설정되지 않았다면 여기서 비밀번호 재설정 링크를 만들어 전달하세요.',
+    adPlan: '플랜', adMembers: '멤버', adAccess: '상태', adUntil: '체험/이용 종료', adAI: 'AI', adNote: '메모', adActions: '결제 기록', adLast: '마지막 수정',
+    ad30: '+30일', ad365: '+1년', adExpire: '만료', adReset: '재설정 링크', adNoPlan: '플랜이 없는 계정', adEmail: (on) => on ? '이메일 발송: 설정됨' : '이메일 발송: 설정 안 됨 (재설정 링크를 직접 전달)',
+    privacyText: 'Nadu Wedding Planner는 결혼 준비에 필요한 정보(예산, 하객, 축의금, 체크리스트 등)와 계정 정보(이메일, 이름, 암호화된 비밀번호)를 Cloudflare 서버에 저장합니다. 이 정보는 서비스 제공과 문의 응대에만 쓰이며 광고나 제3자 제공에 쓰이지 않습니다. 같은 플랜의 멤버만 플랜 데이터를 볼 수 있어요. 언제든 데이터를 내보낼 수 있고, 설정에서 계정을 삭제하면 관련 데이터가 삭제됩니다.'
+  });
+  Object.assign(L.en, {
+    appName: 'Nadu Wedding Planner', appNameKo: 'Nadu Wedding Planner',
+    gEmail: 'Email', gEmailOrId: 'Email (or username for older accounts)', gName: 'Your name (shown to your partner)', gNewPass: 'New password (8+ characters)',
+    gTitleLogin: 'Sign in', gTitleSignup: 'Start your free trial', gTitleForgot: 'Forgot your password?', gTitleReset: 'Set a new password',
+    gToSignup: 'New here? Create an account', gToLogin: 'Already have an account? Sign in', gToForgot: 'Forgot password',
+    gAgree: 'I have read and agree to the privacy note', gPrivacy: 'Privacy note', gSendLink: 'Send reset link', gSetPass: 'Save password',
+    gSent: 'If that email has an account, a reset link is on its way. No email? Contact the site admin.',
+    gTagline: 'A wedding & first-home budget planner for two',
+    gErr: { bad_login: 'That email and password don’t match.', bad_email: 'Check the email address.', email_taken: 'That email already has an account. Sign in or reset your password.', weak_password: 'Use at least 8 characters.', no_name: 'Enter your name.', must_agree: 'Please agree to the privacy note to sign up.', too_many_attempts: 'Too many attempts. Try again in a little while.', bot_check_failed: 'Please complete the bot check again.', bad_reset_link: 'This link has expired or was already used. Request a new one.', bad_invite: 'That invite code is wrong or expired.', plan_limit: 'You’ve reached the number of plans you can create.', bad_password: 'Your current password isn’t right.', last_owner: 'A plan needs at least one owner.', last_member: 'The last member can’t leave. Delete the account instead.', owner_only: 'Only the plan owner can do that.', read_only: 'This plan is read-only for you.', plan_expired: 'Your access has ended, so the plan is read-only.', network: 'Can’t reach the server.' },
+    obTitle: 'Start planning', obHelp: 'Create a new plan, or join your partner’s with the invite code they sent.', obNew: 'Create a new plan', obJoin: 'Join with an invite code',
+    obA: 'Groom’s name', obB: 'Bride’s name', obCreate: 'Create plan', obCode: 'Invite code', obJoinBtn: 'Join', obTrial: (d) => `New plans come with a ${d}-day free trial.`,
+    tSettings: 'Settings', tAdmin: 'Admin',
+    accTrial: (d) => `Trial · ${d} day${d === 1 ? '' : 's'} left`, accActive: 'Active', accActiveUntil: (d) => `Active until ${d}`, accExpired: 'Access ended · read-only', accViewer: 'View only',
+    roBanner: { expired: 'Your access has ended, so the plan is read-only. You can still view and export everything.', viewer: 'You’re a view-only member. Only the owner and editors can make changes.' },
+    payHow: 'To extend access or add AI features, contact the site admin.', contact: 'Contact',
+    sPlan: 'Plan', sNames: 'Names', sSaveNames: 'Save names', sMembers: 'Members', sInvite: 'Invite someone', sInviteHelp: 'Send the code or link. It works once, for 7 days.',
+    sRoleEditor: 'Editor (edits with you)', sRoleViewer: 'View only (e.g. parents)', sMakeInvite: 'Create invite code', sOpenInvites: (k) => `${k} unused invite${k === 1 ? '' : 's'}`, sRevoke: 'Cancel',
+    rOwner: 'Owner', rEditor: 'Editor', rViewer: 'View only', sRemove: 'Remove', sLeave: 'Leave this plan', sYou: 'you',
+    sStatus: 'Access', sAI: 'AI features (automatic quote reading, etc.)', sAIon: 'Available', sAIoff: 'Paid add-on · ask the admin',
+    sAccount: 'My account', sEmailNeeded: 'Add an email so you can reset your password if you forget it.', sSave: 'Save', sChangePass: 'Change password', sCurPass: 'Current password', sNewPass: 'New password',
+    sDanger: 'Delete account', sDeleteHelp: 'This can’t be undone. Plans where you are the last member are deleted with all their data. Export a backup first.', sDeleteBtn: 'Delete my account permanently', sDeletePw: 'Password to confirm',
+    sNewPlan: 'Create another plan', saved: 'Saved', copied2: 'Copied', planSwitch: 'Plan',
+    adTitle: 'Admin · plans & payments', adHelp: 'After a couple pays you, extend their access and turn AI on or off. If email sending isn’t set up, create password reset links here and pass them on.',
+    adPlan: 'Plan', adMembers: 'Members', adAccess: 'Access', adUntil: 'Trial / paid until', adAI: 'AI', adNote: 'Note', adActions: 'Record payment', adLast: 'Last edit',
+    ad30: '+30 days', ad365: '+1 year', adExpire: 'End', adReset: 'Reset link', adNoPlan: 'Accounts without a plan', adEmail: (on) => on ? 'Email sending: set up' : 'Email sending: not set up (pass reset links on yourself)',
+    privacyText: 'Nadu Wedding Planner stores your wedding planning data (budget, guests, gift money, checklist and so on) and account details (email, name, encrypted password) on Cloudflare’s servers. It is used only to run the service and answer support requests — never for advertising or shared with third parties. Only members of a plan can see that plan’s data. You can export your data at any time, and deleting your account in Settings deletes the related data.'
+  });
+  const ENV = { env: 'production', turnstileSiteKey: null, contact: null, trialDays: 14 };
+  const fmtDate = (ms) => new Date(ms).toLocaleDateString(S.lang === 'ko' ? 'ko-KR' : 'en-CA', { year: 'numeric', month: 'short', day: 'numeric' });
+  const daysLeft = (ms) => Math.max(0, Math.ceil((ms - Date.now()) / 864e5));
+  function accessLabel(p) {
+    if (!p) return '';
+    if (p.access === 'trial') return T('accTrial')(daysLeft(p.trial_ends));
+    if (p.access === 'active') return p.paid_until ? T('accActiveUntil')(fmtDate(p.paid_until)) : T('accActive');
+    return T('accExpired');
+  }
+  const errText = (r) => { const c = (r.data && r.data.error) || 'network'; return T('gErr')[c] || c; };
+
+  // ---------- party names follow the plan ----------
+  function applyPlanNames() {
+    const p = Sync.plan || {}, a = p.partner_a || '', b = p.partner_b || '';
+    PARTIES[0][1] = a ? `신랑 (${a})` : '신랑'; PARTIES[0][2] = a ? `Groom (${a})` : 'Groom';
+    PARTIES[1][1] = b ? `신부 (${b})` : '신부'; PARTIES[1][2] = b ? `Bride (${b})` : 'Bride';
+    const t = (p.name ? p.name + ' · ' : '') + 'Nadu Wedding Planner';
+    document.title = (ENV.env === 'staging' ? '[STAGING] ' : '') + t;
+  }
+
+  // ---------- gate: login / signup / forgot / reset / onboarding ----------
+  let gateMode = 'login', resetToken = null, turnstileWidget = null;
+  const GATE_VIEWS = ['login', 'signup', 'forgot', 'reset', 'onboard'];
   function showGate(mode) {
     gateMode = mode || 'login';
     clearInterval(Sync.poller);
-    const g = $('gate'); g.hidden = false; document.body.classList.add('gated');
-    document.querySelectorAll('.signup-only').forEach((e) => { e.hidden = gateMode !== 'signup'; });
-    $('gate-title').textContent = T(gateMode === 'signup' ? 'gTitleSignup' : 'gTitleLogin');
-    $('gate-submit').textContent = T(gateMode === 'signup' ? 'gSignup' : 'gLogin');
-    $('gate-toggle').textContent = T(gateMode === 'signup' ? 'gToLogin' : 'gToSignup');
+    $('gate').hidden = false; document.body.classList.add('gated');
+    GATE_VIEWS.forEach((v) => document.querySelectorAll('.gv-' + v).forEach((e) => { e.hidden = !e.className.split(' ').some((c) => c === 'gv-' + gateMode); }));
+    document.querySelectorAll('#gate [data-t]').forEach((n) => { n.textContent = T(n.dataset.t); });
+    $('gate-title').textContent = T({ login: 'gTitleLogin', signup: 'gTitleSignup', forgot: 'gTitleForgot', reset: 'gTitleReset', onboard: 'obTitle' }[gateMode]);
     $('g-pass').autocomplete = gateMode === 'signup' ? 'new-password' : 'current-password';
-    $('gate-err').textContent = '';
-    setTimeout(() => $('g-user').focus(), 0);
+    $('gate-err').textContent = ''; $('gate-msg').textContent = '';
+    $('ob-trial').textContent = T('obTrial')(ENV.trialDays);
+    document.querySelectorAll('#gate [data-lang]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.lang === S.lang)));
+    $('ob-logout').hidden = gateMode !== 'onboard' || !!Sync.planId;
+    if (gateMode === 'signup') mountTurnstile();
+    const first = { login: 'g-email', signup: 'g-email', forgot: 'g-email', reset: 'g-newpass', onboard: 'ob-a' }[gateMode];
+    setTimeout(() => $(first) && $(first).focus(), 0);
   }
   function hideGate() { $('gate').hidden = true; document.body.classList.remove('gated'); }
-  $('gate-toggle').addEventListener('click', () => showGate(gateMode === 'signup' ? 'login' : 'signup'));
+  function mountTurnstile() {
+    if (!ENV.turnstileSiteKey || turnstileWidget !== null) return;
+    const s = document.createElement('script');
+    s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit'; s.async = true;
+    s.onload = () => { turnstileWidget = window.turnstile.render('#g-turnstile', { sitekey: ENV.turnstileSiteKey }); };
+    document.head.append(s); turnstileWidget = 'loading';
+  }
+  document.querySelectorAll('#gate [data-lang]').forEach((b) => b.addEventListener('click', () => { S.lang = b.dataset.lang; savePrefs(); renderAll(); showGate(gateMode); }));
+  $('ob-logout').addEventListener('click', () => $('btn-logout').click());
+  document.querySelectorAll('[data-goto]').forEach((b) => b.addEventListener('click', () => showGate(b.dataset.goto)));
+  $('g-privacy-link').addEventListener('click', () => { const p = $('g-privacy'); p.hidden = !p.hidden; p.textContent = T('privacyText'); });
   $('gate-form').addEventListener('submit', async (e) => {
     e.preventDefault();
-    const body = { username: $('g-user').value.trim(), password: $('g-pass').value };
-    if (gateMode === 'signup') { body.display = $('g-display').value.trim(); body.invite = $('g-invite').value.trim(); }
-    $('gate-submit').disabled = true;
-    const r = await api(gateMode === 'signup' ? '/signup' : '/login', { method: 'POST', body });
-    $('gate-submit').disabled = false;
-    if (!r.ok) { const code = (r.data && r.data.error) || 'network'; $('gate-err').textContent = T('gErr')[code] || code; return; }
-    $('g-pass').value = ''; $('g-invite').value = '';
-    const me = await api('/me');
-    if (me.ok) enter(me.data);
+    const btn = e.submitter || $('gate-submit'); btn.disabled = true;
+    try {
+      let r;
+      if (gateMode === 'login') r = await api('/login', { method: 'POST', body: { email: $('g-email').value.trim(), password: $('g-pass').value } });
+      else if (gateMode === 'signup') {
+        r = await api('/signup', { method: 'POST', body: { email: $('g-email').value.trim(), display: $('g-display').value.trim(), password: $('g-pass').value, agree: $('g-agree').checked,
+          turnstile: window.turnstile && typeof turnstileWidget === 'string' && turnstileWidget !== 'loading' ? window.turnstile.getResponse(turnstileWidget) : undefined } });
+        if (!r.ok && window.turnstile && turnstileWidget && turnstileWidget !== 'loading') window.turnstile.reset(turnstileWidget);
+      } else if (gateMode === 'forgot') {
+        r = await api('/forgot', { method: 'POST', body: { email: $('g-email').value.trim() } });
+        if (r.ok) { $('gate-msg').textContent = T('gSent'); return; }
+      } else if (gateMode === 'reset') {
+        r = await api('/reset', { method: 'POST', body: { token: resetToken, password: $('g-newpass').value } });
+        if (r.ok) history.replaceState(null, '', location.pathname);
+      } else return;
+      if (!r.ok) { $('gate-err').textContent = errText(r); return; }
+      $('g-pass').value = ''; $('g-newpass').value = '';
+      await afterSignIn();
+    } finally { btn.disabled = false; }
   });
+  $('ob-create').addEventListener('click', async () => {
+    const r = await api('/plans', { method: 'POST', body: { partner_a: $('ob-a').value.trim(), partner_b: $('ob-b').value.trim() } });
+    if (!r.ok) { $('gate-err').textContent = errText(r); return; }
+    S.planId = r.data.id; savePrefs(); await afterSignIn();
+  });
+  $('ob-join').addEventListener('click', () => joinWith($('ob-code').value));
+  async function joinWith(code) {
+    const r = await api('/plans/join', { method: 'POST', body: { code } });
+    try { sessionStorage.removeItem('nadu-join'); } catch (e) {}
+    if (!r.ok) { if (!$('gate').hidden) $('gate-err').textContent = errText(r); else toast(errText(r)); return false; }
+    S.planId = r.data.id; savePrefs(); await afterSignIn(); return true;
+  }
+  async function afterSignIn() {
+    const me = await api('/me');
+    if (!me.ok) { showGate('login'); return; }
+    Sync.me = me.data.user; Sync.plans = me.data.plans;
+    let pending = null; try { pending = sessionStorage.getItem('nadu-join'); } catch (e) {}
+    if (pending) { if (await joinWith(pending)) return; }
+    if (!Sync.plans.length) { showGate('onboard'); return; }
+    const chosen = Sync.plans.find((p) => p.id === S.planId) || Sync.plans[0];
+    await openPlan(chosen.id);
+  }
   $('btn-logout').addEventListener('click', async () => {
-    clearTimeout(Sync.timer); if (Sync.me && SHARED.some((k) => !same(S[k], Sync.base[k]))) await flush();
+    clearTimeout(Sync.timer); if (Sync.planId && SHARED.some((k) => !same(S[k], Sync.base[k]))) await flush();
     await api('/logout', { method: 'POST' });
-    Sync.me = null; Sync.base = {}; Sync.ver = {}; Sync.seq = 0;
+    resetSync(); Sync.me = null; Sync.plans = [];
     S = Object.assign(DEFAULTS(), {}); loadPrefs(); ensureShape(); renderAll(); renderPresence(); showGate('login');
   });
+  function resetSync() { clearInterval(Sync.poller); clearTimeout(Sync.timer); Sync.planId = null; Sync.plan = null; Sync.base = {}; Sync.ver = {}; Sync.seq = 0; Sync.users = {}; Sync.lastEdit = null; }
 
-  async function enter(me) {
-    Sync.me = me.user; Sync.users = me.users || {};
+  async function openPlan(id) {
+    if (Sync.planId && Sync.planId !== id && SHARED.some((k) => !same(S[k], Sync.base[k]))) { clearTimeout(Sync.timer); await flush(); }
+    resetSync(); Sync.planId = id;
     const st = await api('/state');
-    if (!st.ok) { showGate('login'); return; }
+    if (!st.ok) { Sync.planId = null; if (st.status === 401) { showGate('login'); return; } S.planId = null; savePrefs(); Sync.plans = Sync.plans.filter((p) => p.id !== id); if (Sync.plans.length) return openPlan(Sync.plans[0].id); showGate('onboard'); return; }
+    S.planId = id; savePrefs();
+    Sync.plan = st.data.plan;
     const docs = st.data.docs || {}, defs = DEFAULTS();
     SHARED.forEach((k) => {
       if (docs[k]) { S[k] = clone(docs[k].value); Sync.base[k] = clone(docs[k].value); Sync.ver[k] = docs[k].version; noteEdit(docs[k].updated_by, docs[k].updated_at); }
       else { S[k] = clone(defs[k]); Sync.base[k] = undefined; Sync.ver[k] = 0; }
     });
-    Sync.users = st.data.users || Sync.users; Sync.seq = st.data.seq || 0;
-    hideGate(); rerender(); renderPresence();
-    scheduleSync(); // uploads any sections the server doesn't have yet
-    clearInterval(Sync.poller); Sync.poller = setInterval(poll, 4000);
+    Sync.users = st.data.users || {}; Sync.seq = st.data.seq || 0;
+    applyPlanNames(); hideGate(); rerender(); renderPresence();
+    if (Sync.plan.writable) scheduleSync(); // uploads any sections a new plan doesn't have yet
+    Sync.poller = setInterval(poll, 4000);
   }
+  function updatePlanView(p) {
+    if (!p) return;
+    const was = Sync.plan && Sync.plan.writable;
+    Sync.plan = p;
+    const i = (Sync.plans || []).findIndex((x) => x.id === p.id); if (i >= 0) Sync.plans[i] = { ...Sync.plans[i], ...p };
+    if (was !== p.writable) rerender();
+  }
+
+  // ---------- read-only mode ----------
+  function applyReadonly() {
+    const p = Sync.plan, ro = !!(p && !p.writable);
+    document.body.classList.toggle('readonly', ro);
+    const b = $('ro-banner');
+    b.hidden = !ro;
+    if (ro) b.textContent = T('roBanner')[p.access === 'expired' ? 'expired' : 'viewer'] + (p.access === 'expired' ? ' ' + T('payHow') + (ENV.contact ? ` (${ENV.contact})` : '') : '');
+    if (!ro) { ['btn-reset', 'io-load', 'io-file', 'wd'].forEach((id) => { if ($(id)) $(id).disabled = false; }); return; }
+    document.querySelectorAll('.tabpanel:not([data-panel="settings"]):not([data-panel="admin"]) :is(input, select, textarea, button)').forEach((n) => {
+      if (n.closest('.tabs') || n.closest('#export-btns') || n.id === 'hist-more' || n.closest('.fold') || n.classList.contains('fold') || n.closest('.seg') || n.closest('.chipbtn') || n.classList.contains('chipbtn') || n.type === 'search' || n.closest('.searchrow')) return;
+      n.disabled = true;
+    });
+    ['btn-reset', 'io-load', 'io-file', 'wd'].forEach((id) => { if ($(id)) $(id).disabled = true; });
+  }
+
+  // ---------- plan switcher & status chip ----------
+  function renderPlanBar() {
+    const box = $('plan-bar'); if (!box) return;
+    box.innerHTML = '';
+    if (!Sync.plan) return;
+    if ((Sync.plans || []).length > 1) {
+      const sel = el('select', { id: 'plan-switch', 'aria-label': T('planSwitch') }, Sync.plans.map((p) => el('option', { value: p.id, text: p.name })));
+      sel.value = String(Sync.planId);
+      sel.addEventListener('change', () => openPlan(Number(sel.value)));
+      box.append(sel);
+    }
+    const p = Sync.plan;
+    box.append(el('span', { class: 'chip ' + (p.access === 'expired' ? 'bad' : p.access === 'trial' ? 'plan' : 'good'), text: accessLabel(p) }));
+    if (p.role === 'viewer') box.append(el('span', { class: 'chip', text: T('accViewer') }));
+  }
+
+  // ---------- settings tab ----------
+  async function renderSettings() {
+    const box = $('settings-body'); if (!box || !Sync.plan) return;
+    const p = Sync.plan, owner = p.role === 'owner';
+    box.innerHTML = '';
+    const mr = await api('/plan/members');
+    const members = mr.ok ? mr.data.members : [], invites = mr.ok ? mr.data.invites : [];
+
+    // plan names
+    const a = el('input', { id: 'set-a', value: p.partner_a || '', maxlength: 30, disabled: !owner });
+    const b = el('input', { id: 'set-b', value: p.partner_b || '', maxlength: 30, disabled: !owner });
+    a.value = p.partner_a || ''; b.value = p.partner_b || '';
+    const saveNames = el('button', { type: 'button', class: 'primary', text: T('sSaveNames'), disabled: !owner });
+    saveNames.addEventListener('click', async () => {
+      const r = await api('/plan', { method: 'PATCH', body: { partner_a: a.value.trim(), partner_b: b.value.trim(), name: [a.value.trim(), b.value.trim()].filter(Boolean).join(' & ') } });
+      if (!r.ok) return toast(errText(r));
+      await refreshMe(); toast(T('saved'));
+    });
+    box.append(el('div', { class: 'panel' }, el('h3', { text: T('sPlan') }),
+      el('div', { class: 'fields' }, el('label', { class: 'f', for: 'set-a' }, T('obA'), a), el('label', { class: 'f', for: 'set-b' }, T('obB'), b)),
+      el('div', { class: 'row-btns' }, saveNames),
+      el('div', { class: 'kvline' }, el('span', { text: T('sStatus') }), el('b', { text: accessLabel(p) })),
+      el('div', { class: 'kvline' }, el('span', { text: T('sAI') }), el('b', { text: p.ai ? T('sAIon') : T('sAIoff') })),
+      (p.access !== 'active' || !p.ai) ? el('p', { class: 'small', text: T('payHow') + (ENV.contact ? ` ${T('contact')}: ${ENV.contact}` : '') }) : null));
+
+    // members
+    const roleName = (r) => T({ owner: 'rOwner', editor: 'rEditor', viewer: 'rViewer' }[r]);
+    const mt = el('table', {}, el('thead', {}, el('tr', {}, [T('gName'), T('gEmail'), T('sMembers'), ''].map((h, i) => el('th', { class: i < 2 ? 'l' : '', text: i === 2 ? '' : h })))));
+    const tb = el('tbody');
+    members.forEach((m) => {
+      const self = m.id === Sync.me.id;
+      let roleCell = el('span', { text: roleName(m.role) });
+      if (owner && !self) {
+        roleCell = el('select', { 'aria-label': T('sMembers') }, ['owner', 'editor', 'viewer'].map((r) => el('option', { value: r, text: roleName(r) })));
+        roleCell.value = m.role;
+        roleCell.addEventListener('change', async () => { const r = await api('/plan/members', { method: 'POST', body: { user_id: m.id, role: roleCell.value } }); if (!r.ok) { toast(errText(r)); roleCell.value = m.role; } else toast(T('saved')); });
+      }
+      const act = el('td', {});
+      if (self) {
+        const leave = el('button', { type: 'button', class: 'ghost', text: T('sLeave') });
+        leave.addEventListener('click', async () => {
+          if (!leave.dataset.arm) { leave.dataset.arm = 1; leave.textContent = T('del'); leave.classList.add('danger'); return; }
+          const r = await api('/plan/members', { method: 'POST', body: { user_id: m.id, remove: true } });
+          if (!r.ok) return toast(errText(r));
+          S.planId = null; savePrefs(); resetSync(); await afterSignIn();
+        });
+        act.append(leave);
+      } else if (owner) {
+        act.append(delBtn(T('sRemove'), async () => { const r = await api('/plan/members', { method: 'POST', body: { user_id: m.id, remove: true } }); if (!r.ok) return toast(errText(r)); renderSettings(); }));
+      }
+      tb.append(el('tr', {}, el('td', { class: 'l vname', text: m.display + (self ? ` (${T('sYou')})` : '') }), el('td', { class: 'l', text: m.email || '—' }), el('td', { class: 'l' }, roleCell), act));
+    });
+    mt.append(tb);
+    const memberPanel = el('div', { class: 'panel scroll' }, el('h3', { text: T('sMembers') }), mt);
+    box.append(memberPanel);
+
+    // invites
+    if (owner) {
+      const role = el('select', { id: 'inv-role' }, el('option', { value: 'editor', text: T('sRoleEditor') }), el('option', { value: 'viewer', text: T('sRoleViewer') }));
+      const out = el('div', { class: 'invite-out', hidden: true });
+      const make = el('button', { type: 'button', class: 'primary', text: T('sMakeInvite') });
+      make.addEventListener('click', async () => {
+        const r = await api('/plan/invites', { method: 'POST', body: { role: role.value } });
+        if (!r.ok) return toast(errText(r));
+        out.hidden = false; out.innerHTML = '';
+        const copyBtn = (text) => { const c = el('button', { type: 'button', text: T('copy') }); c.addEventListener('click', () => { (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(() => toast(T('copied2')), () => toast(text)); }); return c; };
+        out.append(el('div', { class: 'invite-code mono', text: r.data.code }), copyBtn(r.data.code),
+          el('input', { class: 'invite-link', readonly: true, value: r.data.link }), copyBtn(r.data.link),
+          el('p', { class: 'small', text: T('sInviteHelp') }));
+        out.querySelector('.invite-link').value = r.data.link;
+      });
+      const pend = invites.length ? el('div', { class: 'small' }, T('sOpenInvites')(invites.length) + ' ',
+        ...invites.map((iv) => { const x = el('button', { type: 'button', class: 'ghost', text: `${roleName(iv.role)} · ${fmtDate(iv.expires_at)} ✕` }); x.addEventListener('click', async () => { await api('/plan/invites/revoke', { method: 'POST', body: { ref: iv.ref } }); renderSettings(); }); return x; })) : null;
+      box.append(el('div', { class: 'panel' }, el('h3', { text: T('sInvite') }), el('div', { class: 'row-btns' }, role, make), out, pend));
+    }
+
+    // my account
+    const disp = el('input', { id: 'acc-name', maxlength: 40 }); disp.value = Sync.me.display || '';
+    const mail = el('input', { id: 'acc-email', type: 'email', maxlength: 254 }); mail.value = Sync.me.email || '';
+    const saveAcc = el('button', { type: 'button', class: 'primary', text: T('sSave') });
+    saveAcc.addEventListener('click', async () => {
+      const r = await api('/account', { method: 'PATCH', body: { display: disp.value, email: mail.value } });
+      if (!r.ok) return toast(errText(r)); await refreshMe(); toast(T('saved'));
+    });
+    const cur = el('input', { id: 'acc-cur', type: 'password', autocomplete: 'current-password' }), nw = el('input', { id: 'acc-new', type: 'password', autocomplete: 'new-password', minlength: 8 });
+    const savePw = el('button', { type: 'button', text: T('sChangePass') });
+    savePw.addEventListener('click', async () => {
+      const r = await api('/account', { method: 'PATCH', body: { password: cur.value, newPassword: nw.value } });
+      if (!r.ok) return toast(errText(r)); cur.value = ''; nw.value = ''; toast(T('saved'));
+    });
+    box.append(el('div', { class: 'panel' }, el('h3', { text: T('sAccount') }),
+      !Sync.me.email ? el('p', { class: 'small warn-text', text: T('sEmailNeeded') }) : null,
+      el('div', { class: 'fields' }, el('label', { class: 'f', for: 'acc-name' }, T('gName'), disp), el('label', { class: 'f', for: 'acc-email' }, T('gEmail'), mail)),
+      el('div', { class: 'row-btns' }, saveAcc),
+      el('div', { class: 'fields' }, el('label', { class: 'f', for: 'acc-cur' }, T('sCurPass'), cur), el('label', { class: 'f', for: 'acc-new' }, T('sNewPass'), nw)),
+      el('div', { class: 'row-btns' }, savePw)));
+
+    // another plan
+    const np = el('button', { type: 'button', text: T('sNewPlan') });
+    np.addEventListener('click', () => { $('ob-a').value = ''; $('ob-b').value = ''; showGate('onboard'); });
+    box.append(el('div', { class: 'row-btns' }, np));
+
+    // delete account
+    const pw = el('input', { id: 'del-pw', type: 'password', autocomplete: 'current-password' });
+    const del = el('button', { type: 'button', class: 'danger', text: T('sDeleteBtn') });
+    del.addEventListener('click', async () => {
+      if (!del.dataset.arm) { del.dataset.arm = 1; del.textContent = T('del') + ' ' + T('sDeleteBtn'); return; }
+      const r = await api('/account', { method: 'DELETE', body: { password: pw.value } });
+      if (!r.ok) { delete del.dataset.arm; del.textContent = T('sDeleteBtn'); return toast(errText(r)); }
+      resetSync(); Sync.me = null; S = Object.assign(DEFAULTS(), {}); loadPrefs(); ensureShape(); renderAll(); showGate('login');
+    });
+    box.append(el('div', { class: 'panel danger-zone' }, el('h3', { text: T('sDanger') }), el('p', { class: 'small', text: T('sDeleteHelp') }),
+      el('div', { class: 'fields' }, el('label', { class: 'f', for: 'del-pw' }, T('sDeletePw'), pw)), el('div', { class: 'row-btns' }, del)));
+  }
+  async function refreshMe() {
+    const me = await api('/me'); if (!me.ok) return;
+    Sync.me = me.data.user; Sync.plans = me.data.plans;
+    const p = Sync.plans.find((x) => x.id === Sync.planId); if (p) Sync.plan = p;
+    applyPlanNames(); renderAll();
+  }
+
+  // ---------- admin tab ----------
+  async function renderAdmin() {
+    const box = $('admin-body'); if (!box || !Sync.me || !Sync.me.is_admin) return;
+    const r = await api('/admin/plans');
+    if (!r.ok) { box.textContent = errText(r); return; }
+    box.innerHTML = '';
+    box.append(el('p', { class: 'small', text: T('adEmail')(r.data.emailConfigured) }));
+    const tbl = el('table', {}, el('thead', {}, el('tr', {}, [['#', ''], [T('adPlan'), 'l'], [T('adMembers'), 'l'], [T('adAccess'), 'l'], [T('adUntil'), 'l'], [T('adActions'), 'l'], [T('adAI'), 'l'], [T('adNote'), 'l'], [T('adLast'), 'l']].map(([t, c]) => el('th', { class: c, text: t })))));
+    const tb = el('tbody');
+    const patch = async (id, body) => { const x = await api('/admin/plans/' + id, { method: 'PATCH', body }); if (!x.ok) toast(errText(x)); else { toast(T('saved')); renderAdmin(); if (id === Sync.planId) refreshMe(); } };
+    const resetBtn = (u) => {
+      const b = el('button', { type: 'button', class: 'ghost', text: T('adReset') });
+      const wrap = el('span', {}, b);
+      b.addEventListener('click', async () => {
+        const x = await api('/admin/reset-link', { method: 'POST', body: { user_id: u.id } });
+        if (!x.ok) return toast(errText(x));
+        const out = el('input', { class: 'invite-link', readonly: true, 'aria-label': T('adReset') }); out.value = x.data.link;
+        wrap.querySelector('input')?.remove(); wrap.append(out); out.select();
+        (navigator.clipboard ? navigator.clipboard.writeText(x.data.link) : Promise.reject()).then(() => toast(T('copied2') + ` · ${x.data.minutes} min`), () => {});
+      });
+      return wrap;
+    };
+    r.data.plans.forEach((p) => {
+      const ai = el('input', { type: 'checkbox', id: 'ai-' + p.id }); ai.checked = !!p.ai_enabled;
+      ai.addEventListener('change', () => patch(p.id, { ai_enabled: ai.checked }));
+      const note = el('input', { value: p.admin_note || '', maxlength: 500, style: 'min-width:10rem' }); note.value = p.admin_note || '';
+      note.addEventListener('change', () => patch(p.id, { admin_note: note.value }));
+      const btn = (label, body) => { const b = el('button', { type: 'button', text: label }); b.addEventListener('click', () => patch(p.id, body)); return b; };
+      const until = p.paid_until ? fmtDate(p.paid_until) : p.status === 'active' ? '∞' : p.trial_ends ? `trial → ${fmtDate(p.trial_ends)}` : '—';
+      tb.append(el('tr', {},
+        el('td', { class: 'n', text: p.id }),
+        el('td', { class: 'l vname', text: p.name }),
+        el('td', { class: 'l wrap-cell' }, ...p.members.map((m) => el('div', {}, `${m.display} · ${m.email || '—'} · ${m.role} `, resetBtn(m)))),
+        el('td', { class: 'l' }, el('span', { class: 'chip ' + (p.access === 'expired' ? 'bad' : p.access === 'trial' ? 'plan' : 'good'), text: p.access })),
+        el('td', { class: 'l', text: until }),
+        el('td', { class: 'l' }, el('div', { class: 'row-btns' }, btn(T('ad30'), { extendDays: 30 }), btn(T('ad365'), { extendDays: 365 }), btn(T('adExpire'), { status: 'expired', paid_until: null, trial_ends: null }))),
+        el('td', { class: 'l' }, ai),
+        el('td', { class: 'l' }, note),
+        el('td', { class: 'l small', text: p.last_edit ? fmtDate(new Date(p.last_edit).getTime()) : '—' })));
+    });
+    tbl.append(tb);
+    box.append(el('div', { class: 'panel scroll' }, tbl));
+    if (r.data.usersWithoutPlan.length) {
+      box.append(el('div', { class: 'panel' }, el('h3', { text: T('adNoPlan') }),
+        ...r.data.usersWithoutPlan.map((u) => el('div', { class: 'small' }, `${u.display} · ${u.email || '—'} · ${fmtDate(new Date(u.created_at).getTime())} `, resetBtn(u)))));
+    }
+  }
+
+  // ---------- boot ----------
   function showEnv(name) {
     if (name !== 'staging') return;
     $('env-banner').hidden = false;
-    if (!document.title.startsWith('[STAGING]')) document.title = '[STAGING] ' + document.title;
   }
   async function boot() {
     loadPrefs(); ensureShape(); renderAll();
-    api('/env').then((r) => { if (r.ok) showEnv(r.data.env); });
+    const q = new URLSearchParams(location.search);
+    if (q.get('join')) { try { sessionStorage.setItem('nadu-join', q.get('join')); } catch (e) {} history.replaceState(null, '', location.pathname); }
+    const er = await api('/env'); if (er.ok) Object.assign(ENV, er.data);
+    showEnv(ENV.env); applyPlanNames();
+    if (q.get('reset')) { resetToken = q.get('reset'); showGate('reset'); return; }
     const r = await api('/me');
-    if (r.ok) enter(r.data); else showGate('login');
+    if (r.ok) afterSignIn(); else showGate(q.get('join') ? 'signup' : 'login');
   }
 
   // ---------- history tab ----------
@@ -2044,7 +2461,7 @@ body.gated .wrap { visibility: hidden; }
     const tb = el('tbody');
     if (!histRows.length) emptyRow(tb, 6, T('histEmpty'));
     histRows.forEach((h) => {
-      const b = el('button', { type: 'button', text: T('restoreL') });
+      const b = el('button', { type: 'button', text: T('restoreL'), disabled: !(Sync.plan && Sync.plan.writable) });
       b.addEventListener('click', async () => {
         if (!b.dataset.arm) { b.dataset.arm = '1'; b.textContent = T('restoreQ'); b.classList.add('danger'); setTimeout(() => { if (b.isConnected) { delete b.dataset.arm; b.textContent = T('restoreL'); b.classList.remove('danger'); } }, 3000); return; }
         clearTimeout(Sync.timer); await flush();
@@ -2074,7 +2491,7 @@ body.gated .wrap { visibility: hidden; }
   const csv = (head, rows) => '﻿' + [head, ...rows].map((r) => r.map(csvCell).join(',')).join('\r\n'); // BOM so Excel reads Korean
   const stamp = () => new Date().toISOString().slice(0, 10);
   const EXPORTS = {
-    json: () => { location.href = '/api/export'; },
+    json: () => { location.href = '/api/export?plan=' + Sync.planId; },
     exp: () => download(`expenses-${stamp()}.csv`, csv([T('fCat'), T('fItem'), T('fAmt'), T('fStatus'), T('fPaidBy'), T('fMemo')],
       S.expenses.map((x) => [cname(x.cat), x.name, n(x.amount), x.status === 'paid' ? T('expPaid') : T('expPlanned'), pname(x.paidBy), x.memo || ''])), 'text/csv'),
     guests: () => download(`guests-${stamp()}.csv`, csv([T('fName'), T('fSide'), T('fGroup'), T('fCount'), T('fAttend'), T('fMemo')],
@@ -2098,7 +2515,7 @@ body.gated .wrap { visibility: hidden; }
   }
   $('hist-more').addEventListener('click', () => renderHistory(false));
 
-  function renderAll() { ensurePrep(); applyLang(); renderTabs(); setupFolds(); renderBudget(); renderExtras(); renderVenues(); renderShared(); renderLoans(); if (forms.lang !== S.lang) renderPrepForms(); renderSearchRows(); renderRatio(); renderExportButtons(); compute(); renderHeader(); renderPresence(); applyTab(); }
+  function renderAll() { ensurePrep(); applyLang(); renderTabs(); setupFolds(); renderBudget(); renderExtras(); renderVenues(); renderShared(); renderLoans(); if (forms.lang !== S.lang) renderPrepForms(); renderSearchRows(); renderRatio(); renderExportButtons(); compute(); renderHeader(); renderPresence(); renderPlanBar(); applyTab(); applyReadonly(); }
   boot();
 })();
 </script>

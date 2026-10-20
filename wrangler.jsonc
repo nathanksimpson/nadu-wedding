@@ -11,7 +11,7 @@
   "d1_databases": [
     { "binding": "DB", "database_name": "nadu-wedding-db", "database_id": "1a54d78d-0198-4d95-92da-e4d4e154649c" }
   ],
-  "vars": { "MAX_USERS": "4", "APP_ENV": "production" },
+  "vars": { "APP_ENV": "production", "TRIAL_DAYS": "14" },
   "observability": { "enabled": true },
   // Test copy: its own Worker (nadu-wedding-staging) and its own empty database.
   // Deploy with `npm run deploy:staging`, or push to the `staging` branch.
@@ -20,7 +20,7 @@
       "d1_databases": [
         { "binding": "DB", "database_name": "nadu-wedding-staging-db", "database_id": "d7b83cb3-f838-4281-abbc-d01651bee1f7" }
       ],
-      "vars": { "MAX_USERS": "4", "APP_ENV": "staging" }
+      "vars": { "APP_ENV": "staging", "TRIAL_DAYS": "14" }
     }
   }
 }
