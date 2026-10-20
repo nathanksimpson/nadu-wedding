@@ -324,6 +324,10 @@ form.entry .split-f.hide { display: none; }
 .opt tr.tot td { border-top: 1px solid var(--ink); }
 .report table th, .report table td { white-space: normal; }
 
+/* staging marker: impossible to mistake the test copy for the real one */
+.env-banner { position: sticky; top: 0; z-index: 50; background: repeating-linear-gradient(135deg, #f2c94c 0 14px, #f7dc7a 14px 28px); color: #3b2a00; text-align: center; font: 600 13px/1.4 var(--body); letter-spacing: .04em; padding: 6px 12px; padding-top: calc(6px + env(safe-area-inset-top, 0px)); }
+.gate .env-banner { position: absolute; top: 0; left: 0; right: 0; }
+@media print { .env-banner { display: none !important; } }
 /* sign-in gate & sync status */
 .gate { position: fixed; inset: 0; z-index: 40; background: var(--bg); display: grid; place-items: center; padding: max(16px, env(safe-area-inset-top, 0px)) max(16px, env(safe-area-inset-right, 0px)) max(16px, env(safe-area-inset-bottom, 0px)) max(16px, env(safe-area-inset-left, 0px)); overflow-y: auto; }
 .gate-card { width: min(100%, 24rem); background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 28px 24px; display: flex; flex-direction: column; gap: 14px; }
@@ -354,6 +358,7 @@ body.gated .wrap { visibility: hidden; }
 </style>
 </head>
 <body class="gated">
+<div class="env-banner" id="env-banner" hidden>STAGING · 테스트용 · Test copy — data here is separate from the real app</div>
 <div class="wrap">
   <header class="top app">
     <div>
@@ -2012,8 +2017,14 @@ body.gated .wrap { visibility: hidden; }
     scheduleSync(); // uploads any sections the server doesn't have yet
     clearInterval(Sync.poller); Sync.poller = setInterval(poll, 4000);
   }
+  function showEnv(name) {
+    if (name !== 'staging') return;
+    $('env-banner').hidden = false;
+    if (!document.title.startsWith('[STAGING]')) document.title = '[STAGING] ' + document.title;
+  }
   async function boot() {
     loadPrefs(); ensureShape(); renderAll();
+    api('/env').then((r) => { if (r.ok) showEnv(r.data.env); });
     const r = await api('/me');
     if (r.ok) enter(r.data); else showGate('login');
   }

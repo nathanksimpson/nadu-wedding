@@ -200,6 +200,7 @@ async function api(req, env, url) {
     const origin = req.headers.get('origin');
     if (origin && origin !== url.origin) return err(403, 'bad_origin');
   }
+  if (p === '/api/env' && m === 'GET') return json({ env: env.APP_ENV || 'production' });
   if (p === '/api/login' && m === 'POST') return login(req, env);
   if (p === '/api/signup' && m === 'POST') return signup(req, env);
   if (p === '/api/logout' && m === 'POST') return logout(req, env);
@@ -207,7 +208,7 @@ async function api(req, env, url) {
   const user = await currentUser(req, env);
   if (!user) return err(401, 'not_signed_in');
 
-  if (p === '/api/me' && m === 'GET') return json({ user, users: await usersMap(env) });
+  if (p === '/api/me' && m === 'GET') return json({ user, users: await usersMap(env), env: env.APP_ENV || 'production' });
   if (p === '/api/state' && m === 'GET') return json(await getState(env));
   if (p === '/api/changes' && m === 'GET') return changes(env, url);
   if (p === '/api/history' && m === 'GET') return history(env, url);

@@ -51,3 +51,17 @@ then paste it into the same box in the deployed app and press **불러오기**.
 - `src/worker.js` — API: sign-in, sections with version checks, history, restore, export
 - `schema.sql` — database tables (already applied; `npm run schema` re-applies safely)
 - `test/worker.test.mjs` — API tests against an in-memory SQLite (`npm test`)
+
+## Staging (test copy)
+
+A separate Worker, `nadu-wedding-staging`, with its own empty database `nadu-wedding-staging-db`
+(already created, tables set up). Nothing done there can touch the real app's data. Every page in
+staging shows a yellow **STAGING** bar and the tab title starts with `[STAGING]`.
+
+- **Deploy:** push to the `staging` branch (GitHub Actions deploys it), or run `npm run deploy:staging`.
+- **Go live:** merge `staging` into `main`; pushing `main` deploys the real app.
+- **Once, before first use:** `npm run secret:staging` to set a staging invite code, then sign up there
+  with test accounts.
+- **Test with real-looking data:** export JSON from the live app (History tab → 전체 데이터) and load it
+  in staging via 가져오기·내보내기 → 불러오기.
+- **Local:** `npm run dev` runs everything on your PC with a local database.

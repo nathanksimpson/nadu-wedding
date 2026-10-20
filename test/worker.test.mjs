@@ -7,7 +7,7 @@ const stmt = (sql) => ({ sql, args: [], bind(...a) { this.args = a; return this;
   first() { const r = db.prepare(sql).get(...this.args); return Promise.resolve(r ?? null); },
   all() { return Promise.resolve({ results: db.prepare(sql).all(...this.args) }); },
   run() { const r = db.prepare(sql).run(...this.args); return Promise.resolve({ meta: { changes: Number(r.changes), last_row_id: Number(r.lastInsertRowid) } }); } });
-const env = { INVITE_CODE: 'secret-code', MAX_USERS: '4', ASSETS: { fetch: () => new Response('page') },
+const env = { INVITE_CODE: 'secret-code', MAX_USERS: '4', APP_ENV: 'staging', ASSETS: { fetch: () => new Response('page') },
   DB: { prepare: stmt, batch: async (list) => { db.exec('BEGIN'); try { const out = []; for (const s of list) out.push(await s.run()); db.exec('COMMIT'); return out; } catch (e) { db.exec('ROLLBACK'); throw e; } } } };
 const base = 'https://wed.example';
 async function call(path, { method = 'GET', body, sid } = {}) {
@@ -47,4 +47,6 @@ const bad = await worker.fetch(new Request(base + '/api/doc/guests', { method: '
 ok(bad.status === 403, 'cross-site write blocked');
 await call('/api/logout', { method: 'POST', sid: a });
 ok((await call('/api/me', { sid: a })).status === 401, 'logout ends session');
+const envR = await call('/api/env');
+ok(envR.status === 200 && envR.data.env === 'staging', 'environment name is public and correct');
 console.log('all worker tests pass');
