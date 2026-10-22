@@ -14,10 +14,10 @@ Legend: `[ ]` to do · `[x]` done · **(decide)** waiting on a decision
 - [ ] **(decide)** Keep a free plain data download on plan expiry and before account deletion (recommended for viewing rights, 제35조)
 - [ ] **(decide)** Custom domain (needed for Cloudflare's own bot blocking)
 - [ ] **(decide)** Privacy officer (개인정보 보호책임자): name and contact email
-- [ ] **(decide)** Who reviews the privacy policy: a lawyer, or the 개인정보보호위원회's free policy-writing guide and checker
+- [x] Who reviews the privacy policy: **a Korean lawyer**, before it goes live on production (decided 2026-10-22)
 - [ ] **(decide)** Staging data: replace with fake sample data, or lock staging behind Cloudflare Access
 - [ ] **(decide)** Require two-step login (authenticator app) for admins
-- [ ] **(decide)** Expired-plan retention: delete after 1 year, with an email warning 30 days before (needs Resend set up)
+- [x] Expired-plan retention: **delete after 1 year, with an email warning 30 days before** (decided 2026-10-22; needs Resend set up)
 
 ---
 
@@ -54,6 +54,7 @@ Legend: `[ ]` to do · `[x]` done · **(decide)** waiting on a decision
 
 ### Privacy policy (제30조)
 - [ ] Full Korean 개인정보처리방침 page, plus English
+- [ ] **Release blocker:** a Korean lawyer reviews the policy, sign-up notice and terms before they go live on production
 - [ ] Linked on every page and at sign-up, labelled "개인정보처리방침", with a version history
 - [ ] What is collected, the purpose, and the legal basis (contract vs. consent)
 - [ ] Retention and deletion periods, including backups (30 days) and Cloudflare Time Travel (30 days)
@@ -73,7 +74,8 @@ Legend: `[ ]` to do · `[x]` done · **(decide)** waiting on a decision
 
 ### Retention and deletion (제21조)
 - [ ] Account or plan deletion purges sections, history, files and invites (verify with a test)
-- [ ] Expired-plan retention, per the decision in §0, with a warning email
+- [ ] Expired-plan retention: scheduled job deletes plans expired for 1 year; warning email 30 days before; stated in the policy
+- [ ] Set up Resend (`RESEND_API_KEY`, `MAIL_FROM`) on staging and production so the warning emails can go out
 - [ ] After a backup, drop the old pre-upgrade `docs` / `history` tables on live (duplicate personal data)
 - [ ] Admin backup files: keep in one place, delete after a set period (record it in the internal plan)
 
