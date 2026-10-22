@@ -1887,7 +1887,7 @@ body.gated .wrap { visibility: hidden; }
     lastBy: (who, when) => `마지막 수정 ${who} · ${when}`, ago: { s: '방금', m: (k) => `${k}분 전`, h: (k) => `${k}시간 전`, d: (k) => `${k}일 전` },
     histHelp: '모든 저장은 항목별 버전으로 남아요. 이전 버전으로 되돌려도 지금 버전은 기록에 그대로 남습니다.', hWhen: '시각', hWho: '수정한 사람', hWhat: '항목', hVer: '버전', hAct: '종류',
     aEdit: '수정', aRestore: '되돌림', aImport: '가져오기', restoreL: '이 버전으로 되돌리기', restoreQ: '정말 되돌릴까요?', restored: '이전 버전으로 되돌렸어요', more: '더 보기', histEmpty: '아직 기록이 없어요',
-    exportTitle: '내보내기', exJson: '전체 데이터 (JSON)', exExp: '지출 CSV', exGuests: '하객 CSV', exGifts: '축의금 CSV', exVendors: '업체 CSV', exHist: '변경 기록 CSV',
+    exportTitle: '내보내기', exBackup: '전체 백업 (.sql)', exJson: '전체 데이터 (JSON)', exExp: '지출 CSV', exGuests: '하객 CSV', exGifts: '축의금 CSV', exVendors: '업체 CSV', exHist: '변경 기록 CSV',
     keyLabels: { budget: '예산 기준', selectedVenue: '선택한 예식장', selectedLoan: '선택한 대출', venues: '예식장 옵션', nonVenue: '예식장 외 비용', afterCosts: '입주 비용', honsu: '혼수', categories: '추가 카테고리', loans: '대출 옵션', seeded: '기본 옵션', wedding: '예식 날짜', checks: '체크리스트 완료', tasks: '직접 추가한 할 일', expenses: '지출 내역', split: '분담 비율', guests: '하객 명단', guestRate: '미정 참석률', giftLog: '받은 축의금', vendors: '업체 비교' }
   });
   Object.assign(L.en, {
@@ -1898,7 +1898,7 @@ body.gated .wrap { visibility: hidden; }
     lastBy: (who, when) => `Last edit by ${who} · ${when}`, ago: { s: 'just now', m: (k) => `${k} min ago`, h: (k) => `${k} h ago`, d: (k) => `${k} d ago` },
     histHelp: 'Every save is kept as a version of that section. Restoring an old version adds a new version, so nothing is lost.', hWhen: 'When', hWho: 'Who', hWhat: 'Section', hVer: 'Version', hAct: 'Type',
     aEdit: 'Edit', aRestore: 'Restore', aImport: 'Import', restoreL: 'Restore this version', restoreQ: 'Restore it?', restored: 'Restored the earlier version', more: 'Load more', histEmpty: 'No history yet',
-    exportTitle: 'Export', exJson: 'All data (JSON)', exExp: 'Expenses CSV', exGuests: 'Guests CSV', exGifts: 'Gift money CSV', exVendors: 'Vendors CSV', exHist: 'History CSV',
+    exportTitle: 'Export', exBackup: 'Full backup (.sql)', exJson: 'All data (JSON)', exExp: 'Expenses CSV', exGuests: 'Guests CSV', exGifts: 'Gift money CSV', exVendors: 'Vendors CSV', exHist: 'History CSV',
     keyLabels: { budget: 'Budget inputs', selectedVenue: 'Selected venue', selectedLoan: 'Selected loan', venues: 'Venue options', nonVenue: 'Non-venue costs', afterCosts: 'Move-in costs', honsu: '혼수', categories: 'Extra categories', loans: 'Loan options', seeded: 'Default options', wedding: 'Wedding date', checks: 'Checklist ticks', tasks: 'Our own tasks', expenses: 'Expenses', split: 'Split ratio', guests: 'Guest list', guestRate: 'Maybe attendance rate', giftLog: 'Gift money', vendors: 'Vendors' }
   });
 
@@ -2514,7 +2514,7 @@ body.gated .wrap { visibility: hidden; }
   };
   function renderExportButtons() {
     const box = $('export-btns'); if (!box) return; box.innerHTML = '';
-    [['json', 'exJson'], ['exp', 'exExp'], ['guests', 'exGuests'], ['gifts', 'exGifts'], ['vendors', 'exVendors'], ['hist', 'exHist']].forEach(([k, lab]) => {
+    [['backup', 'exBackup'], ['json', 'exJson'], ['exp', 'exExp'], ['guests', 'exGuests'], ['gifts', 'exGifts'], ['vendors', 'exVendors'], ['hist', 'exHist']].forEach(([k, lab]) => {
       const b = el('button', { type: 'button', text: T(lab) }); b.addEventListener('click', EXPORTS[k]); box.append(b);
     });
   }
