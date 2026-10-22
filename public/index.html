@@ -1459,7 +1459,7 @@ body.gated .wrap { visibility: hidden; }
     S.wedding = S.wedding || ''; S.checks = S.checks || {}; S.tasks = S.tasks || [];
     S.expenses = S.expenses || []; S.split = S.split || { g: 25, b: 25, gp: 25, bp: 25 };
     S.guests = S.guests || []; S.guestRate = S.guestRate ?? 60; S.giftLog = S.giftLog || []; S.vendors = S.vendors || [];
-    S.sdmCatalog = S.sdmCatalog || { studios: [], dresses: [], makeup: [], hair: [] }; S.sdm = S.sdm || window.NaduSdm.emptyPicks();
+    S.sdmCatalog = S.sdmCatalog || { studios: [], dresses: [], tux: [], makeup: [], hair: [] }; S.sdm = S.sdm || window.NaduSdm.emptyPicks();
     if (!S.tab) S.tab = 'dash';
   }
   const PREP_KEYS = ['wedding', 'checks', 'tasks', 'expenses', 'split', 'guests', 'guestRate', 'giftLog', 'vendors', 'sdm', 'sdmCatalog', 'tab', 'skin', 'collapsed'];
@@ -1842,8 +1842,8 @@ body.gated .wrap { visibility: hidden; }
       addVendors: (rows) => {
         let k = 0;
         rows.forEach((r) => {
-          if (!r.name || S.vendors.some((v) => v.sdmRef === r.ref || (v.cat === 'sdm' && v.name === r.name))) return;
-          S.vendors.push({ id: uid(), cat: 'sdm', name: r.name, quote: r.price || 0, final: 0, memo: '', sdmRef: r.ref }); k++;
+          if (!r.name || S.vendors.some((v) => v.sdmRef === r.ref || (v.cat === (r.cat || 'sdm') && v.name === r.name))) return;
+          S.vendors.push({ id: uid(), cat: r.cat || 'sdm', name: r.name, quote: r.price || 0, final: 0, memo: '', sdmRef: r.ref }); k++;
         });
         if (k) save();
         return k;

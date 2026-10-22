@@ -4,9 +4,11 @@
 // index.html calls NaduSdm.render(host, ctx) whenever the tab is shown or the data changes.
 (function () {
   'use strict';
-  const CATS = ['studios', 'dresses', 'makeup', 'hair'];
-  const SLOT_OF = { studios: 'studio', dresses: 'dress', makeup: 'makeup', hair: 'hair' };
-  const PREFIX = { studios: 's', dresses: 'd', makeup: 'm', hair: 'h' };
+  const CATS = ['studios', 'dresses', 'tux', 'makeup', 'hair'];
+  const SLOT_OF = { studios: 'studio', dresses: 'dress', tux: 'tux', makeup: 'makeup', hair: 'hair' };
+  const GARMENT = new Set(['dresses', 'tux']); // photo cards with shoot/ceremony prices
+  const NO_INCL = new Set(['hair', 'tux']); // never covered by a studio package
+  const PREFIX = { studios: 's', dresses: 'd', tux: 't', makeup: 'm', hair: 'h' };
   const DEFAULT_BUDGET = 3000000;
   const MOODS = [['w', '우드·한옥', 'Wood & hanok'], ['g', '그리너리', 'Greenery'], ['wh', '흰배경 인물', 'White studio'], ['bk', '블랙·흑백', 'Black & mono'], ['set', '화려한 세트', 'Grand sets']];
   const TIERS = [['c', '가성비', 'Value'], ['m', '중간', 'Mid'], ['h', '고가', 'Premium'], ['r', '지방 토탈', 'Out of town']];
@@ -14,17 +16,21 @@
   const FOCUS = [['p', '인물중심', 'Faces first'], ['b', '배경중심', 'Backdrops first'], ['x', '균형', 'Balanced']];
   const FLAGN = [['야외', 'Outdoor'], ['통창', 'Big windows'], ['대문', 'Front door'], ['야간', 'Night']];
   const MKMOODS = [['sh', '고급 음영', 'Sculpted shading', '가을·겨울 톤 추천', 'Suits autumn and winter tones'], ['id', '아이돌 뽀용', 'Idol dewy', '봄 브라이트·트루 추천', 'Suits bright spring tones'], ['pu', '청순 맑음', 'Clear & pure', '봄 브라이트·여름 라이트 추천', 'Suits bright spring and light summer']];
+  const TKINDS = [['rtw', '기성복', 'Ready-to-wear'], ['rent', '대여+맞춤', 'Rental + tailored'], ['custom', '맞춤', 'Fully tailored']];
+  // price bands (만원) for the price filter on garment cards
+  const BANDS = { dresses: [100, 170], tux: [50, 100] };
+  const bandOf = (k, x) => !x.lo ? '' : x.lo < BANDS[k][0] ? 'c' : x.lo <= BANDS[k][1] ? 'm' : 'h';
   const DTAGS = [['si', '실크', 'Silk'], ['bz', '비즈', 'Beading'], ['la', '레이스', 'Lace'], ['im', '수입', 'Imported'], ['dm', '국내', 'Korean-made'], ['pu', '청순', 'Pure'], ['lv', '러블리', 'Lovely'], ['ht', '호텔 예식', 'Hotel weddings'], ['cl', '깔끔·심플', 'Clean & simple'], ['gl', '화려·고급', 'Glamorous'], ['un', '개성', 'Distinctive'], ['mk', '제작', 'Made to order']];
 
   const STR = {
     ko: {
       title: '스드메 조합', hint: '아래 카드를 칸으로 끌어다 놓거나 카드의 ‘조합에 넣기’를 누르세요.', budget: '스드메 예산', budgetHint: '조합 합계를 이 금액과 비교해요',
       budgetFrom: (b) => `예산 계획의 스드메 항목 ${b}을 쓰고 있어요`, budgetDefault: '예산이 없어서 300만원으로 계산했어요',
-      slot: { studio: '스튜디오', dress: '드레스', makeup: '헤어·메이크업', hair: '헤어변형' }, slotEmpty: { studio: '스튜디오 카드를 여기로', dress: '드레스 카드를 끌어오거나 직접 적어요', makeup: '헤메 카드를 끌어오거나 직접 적어요', hair: '선택 사항이에요. 끌어오거나 직접 적어요' },
+      slot: { studio: '스튜디오', dress: '드레스', tux: '턱시도', makeup: '헤어·메이크업', hair: '헤어변형' }, slotEmpty: { studio: '스튜디오 카드를 여기로', dress: '드레스 카드를 끌어오거나 직접 적어요', tux: '턱시도 카드를 끌어오거나 직접 적어요', makeup: '헤메 카드를 끌어오거나 직접 적어요', hair: '선택 사항이에요. 끌어오거나 직접 적어요' },
       name: '샵 이름', price: '금액', quote: '우리 견적', incl: '스튜디오 토탈에 포함', remove: '빼기',
       total: '조합 합계', ofBudget: (b) => `예산 ${b}`, left: '남는 돈', over: '예산 초과', clear: '조합 비우기', toVendor: '업체 비교에 넣기', vendorDone: (k) => `업체 비교에 ${k}곳을 넣었어요`, vendorNone: '넣을 새 업체가 없어요',
       short: '후보 스튜디오', shortHint: '♡를 누르거나 카드를 여기로 끌어오면 후보에 담겨요', shortEmpty: '아직 후보가 없어요',
-      browse: '둘러보기', cat: { studios: '스튜디오', dresses: '드레스', makeup: '헤어·메이크업', hair: '헤어변형' }, count: (k) => `${k}곳`,
+      browse: '둘러보기', cat: { studios: '스튜디오', dresses: '드레스', tux: '턱시도', makeup: '헤어·메이크업', hair: '헤어변형' }, fKind: '종류', count: (k) => `${k}곳`,
       all: '전체', fMood: '무드', fTier: '가격', fReg: '지역', fStyle: '스타일', fShort: '후보만', fPop: '인기샵만', sort: '정렬', sortPrice: '가격 낮은 순', sortName: '이름 순',
       use: '조합에 넣기', inUse: '조합에 있음', shortAdd: '후보 담기', shortDel: '후보 빼기', pkg: '토탈', pkgLong: '토탈 (드레스·헤메 포함)', ask: '가격 상담', both: '촬영+본식', bon: '본식만', pop: '인기샵', artist: '유명 선생님',
       flagP: '추가금', noPhoto: '사진 없음', man: '만',
@@ -37,11 +43,11 @@
     en: {
       title: 'Studio, dress & makeup', hint: 'Drag cards into the slots, or tap “Use in combo” on a card.', budget: 'Package budget', budgetHint: 'The combo total is compared with this',
       budgetFrom: (b) => `Using the studio/dress/makeup line from the budget plan (${b})`, budgetDefault: 'No budget set, so this uses ₩3,000,000',
-      slot: { studio: 'Studio', dress: 'Dress', makeup: 'Hair & makeup', hair: 'Hair changes' }, slotEmpty: { studio: 'Drag a studio card here', dress: 'Drag a dress card here or type one in', makeup: 'Drag a makeup card here or type one in', hair: 'Optional. Drag one here or type one in' },
+      slot: { studio: 'Studio', dress: 'Dress', tux: 'Tuxedo', makeup: 'Hair & makeup', hair: 'Hair changes' }, slotEmpty: { studio: 'Drag a studio card here', dress: 'Drag a dress card here or type one in', tux: 'Drag a tuxedo card here or type one in', makeup: 'Drag a makeup card here or type one in', hair: 'Optional. Drag one here or type one in' },
       name: 'Shop name', price: 'Price', quote: 'Our quote', incl: 'Included in the studio package', remove: 'Remove',
       total: 'Combo total', ofBudget: (b) => `Budget ${b}`, left: 'Left over', over: 'Over budget', clear: 'Clear combo', toVendor: 'Add to vendor list', vendorDone: (k) => `Added ${k} to the vendor list`, vendorNone: 'No new vendors to add',
       short: 'Shortlisted studios', shortHint: 'Tap ♡ or drag a card here to shortlist it', shortEmpty: 'Nothing shortlisted yet',
-      browse: 'Browse', cat: { studios: 'Studios', dresses: 'Dresses', makeup: 'Hair & makeup', hair: 'Hair changes' }, count: (k) => `${k} listed`,
+      browse: 'Browse', cat: { studios: 'Studios', dresses: 'Dresses', tux: 'Tuxedos', makeup: 'Hair & makeup', hair: 'Hair changes' }, fKind: 'Type', count: (k) => `${k} listed`,
       all: 'All', fMood: 'Look', fTier: 'Price', fReg: 'Area', fStyle: 'Style', fShort: 'Shortlist only', fPop: 'Popular only', sort: 'Sort', sortPrice: 'Lowest price', sortName: 'Name',
       use: 'Use in combo', inUse: 'In combo', shortAdd: 'Shortlist', shortDel: 'Unshortlist', pkg: 'Package', pkgLong: 'Package (dress & makeup included)', ask: 'Price on request', both: 'Shoot + ceremony', bon: 'Ceremony only', pop: 'Popular', artist: 'Known artist',
       flagP: 'extra fee', noPhoto: 'No photo', man: '',
@@ -71,7 +77,7 @@
   const lsGet = (k, d) => { try { return JSON.parse(localStorage.getItem(k) || 'null') ?? d; } catch (e) { return d; } };
   const lsSet = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} };
 
-  const emptyPicks = () => ({ studio: '', price: 0, dress: { id: '', name: '', price: 0 }, makeup: { id: '', name: '', price: 0 }, hair: { id: '', name: '', price: 0 }, incl: true, short: [], budget: 0 });
+  const emptyPicks = () => ({ studio: '', price: 0, dress: { id: '', name: '', price: 0 }, tux: { id: '', name: '', price: 0 }, makeup: { id: '', name: '', price: 0 }, hair: { id: '', name: '', price: 0 }, incl: true, short: [], budget: 0 });
   function normCatalog(c) {
     c = c && typeof c === 'object' ? c : {};
     const out = {};
@@ -83,13 +89,13 @@
     const slot = (o, list) => ({ id: list.some((x) => x.id === o?.id) ? o.id : '', name: String(o?.name || ''), price: num(o?.price) });
     return {
       studio: cat.studios.some((x) => x.id === p.studio) ? p.studio : '', price: num(p.price),
-      dress: slot(p.dress, cat.dresses), makeup: slot(p.makeup, cat.makeup), hair: slot(p.hair, cat.hair),
+      dress: slot(p.dress, cat.dresses), tux: slot(p.tux, cat.tux), makeup: slot(p.makeup, cat.makeup), hair: slot(p.hair, cat.hair),
       incl: p.incl !== false, short: Array.isArray(p.short) ? p.short.filter((id) => cat.studios.some((x) => x.id === id)) : [], budget: num(p.budget)
     };
   }
 
   // ---------- view state (per device) ----------
-  let F = Object.assign({ cat: 'studios', mood: '', tier: '', reg: '', short: false, sort: 'price', mm: '', mt: '', dt: '', dg: '', ht: '', hp: false }, lsGet('nadu-sdm-filters', {}));
+  let F = Object.assign({ tk: '', tt: '', cat: 'studios', mood: '', tier: '', reg: '', short: false, sort: 'price', mm: '', mt: '', dt: '', dg: '', ht: '', hp: false }, lsGet('nadu-sdm-filters', {}));
   let editing = null; // { cat, item } while the add/edit form is open
   let busy = '';
 
@@ -176,15 +182,15 @@
     drop(ss, ['studios'], useItem);
     combo.append(ss);
     // dress, makeup, hair
-    [['dresses', 'dress'], ['makeup', 'makeup'], ['hair', 'hair']].forEach(([k, s]) => {
-      const cur = P[s], x = cur.id ? byId(k, cur.id) : null, inc = s !== 'hair' && inclOn;
+    [['dresses', 'dress'], ['tux', 'tux'], ['makeup', 'makeup'], ['hair', 'hair']].forEach(([k, s]) => {
+      const cur = P[s], x = cur.id ? byId(k, cur.id) : null, inc = !NO_INCL.has(k) && inclOn;
       const box = h('div', { class: 'sdm-slot' + (x || cur.name || inc ? ' filled' : '') }, h('h3', {}, h('span', { text: L.slot[s] }),
         x && !inc && W ? h('button', { type: 'button', class: 'sdm-del', text: L.remove, onclick: () => setP({ ...P, [s]: { id: '', name: '', price: 0 } }) }) : null));
-      if (studio && studio.total && s !== 'hair') {
+      if (studio && studio.total && !NO_INCL.has(k)) {
         box.append(h('label', { class: 'sdm-incl' }, h('input', { type: 'checkbox', id: 'sdm-incl-' + s, checked: P.incl, disabled: !W, onchange: (e) => setP({ ...P, incl: e.target.checked }) }), h('span', { text: L.incl })));
       }
       if (x && !inc) {
-        box.append(h('div', { class: 'sdm-pick' }, photoEl(x, '', k === 'dresses' ? null : L.slot[s]), h('div', {}, h('div', { class: 'sdm-nm', text: nm(x) }), h('div', { class: 'sdm-mt', text: priceTxt(x) + (x.artist ? ' · ' + x.artist : '') }))));
+        box.append(h('div', { class: 'sdm-pick' }, photoEl(x, '', GARMENT.has(k) ? null : L.slot[s]), h('div', {}, h('div', { class: 'sdm-nm', text: nm(x) }), h('div', { class: 'sdm-mt', text: priceTxt(x) + (x.artist ? ' · ' + x.artist : '') }))));
         box.append(priceField('sdm-' + s + '-p', L.quote, cur.price, (v) => setP({ ...P, [s]: { ...P[s], price: v } })));
       } else {
         if (!inc) box.append(h('div', { class: 'sdm-hint', text: L.slotEmpty[s] }));
@@ -200,13 +206,14 @@
 
     // ---------- summary ----------
     const sP = studio ? (P.price || num(studio.lo) * 10000) : 0;
-    const tot = sP + (inclOn ? 0 : P.dress.price + P.makeup.price) + P.hair.price, left = B - tot, pc = B > 0 ? Math.round(tot / B * 100) : 0;
+    const tot = sP + (inclOn ? 0 : P.dress.price + P.makeup.price) + P.tux.price + P.hair.price, left = B - tot, pc = B > 0 ? Math.round(tot / B * 100) : 0;
     const acts = h('div', { class: 'sdm-acts' });
     if (W) {
       acts.append(h('button', { type: 'button', class: 'sdm-btn ghost', text: L.toVendor, onclick: () => {
         const rows = [];
         if (studio) rows.push({ name: nm(studio), price: sP, ref: 'studios:' + studio.id });
         if (!inclOn) [['dresses', 'dress'], ['makeup', 'makeup']].forEach(([k, s]) => { if (P[s].name || P[s].id) rows.push({ name: P[s].id ? nm(byId(k, P[s].id)) : P[s].name, price: P[s].price, ref: k + ':' + (P[s].id || P[s].name) }); });
+        if (P.tux.name || P.tux.id) rows.push({ name: P.tux.id ? nm(byId('tux', P.tux.id)) : P.tux.name, price: P.tux.price, ref: 'tux:' + (P.tux.id || P.tux.name), cat: 'attire' });
         if (P.hair.name || P.hair.id) rows.push({ name: P.hair.id ? nm(byId('hair', P.hair.id)) : P.hair.name, price: P.hair.price, ref: 'hair:' + (P.hair.id || P.hair.name) });
         const k = ctx.addVendors(rows); ctx.toast(k ? L.vendorDone(k) : L.vendorNone);
       } }));
@@ -250,8 +257,11 @@
     } else if (k === 'dresses') {
       filters.append(chipRow(L.fTier, 'dt', [['c', lang === 'ko' ? '100만 미만' : 'Under ₩1M'], ['m', lang === 'ko' ? '100~170만' : '₩1M–1.7M'], ['h', lang === 'ko' ? '170만 초과' : 'Over ₩1.7M']]));
       filters.append(chipRow(L.fStyle, 'dg', DTAGS.filter((t) => cat.dresses.some((d) => (d.tags || []).includes(t[0]))).map((t) => [t[0], lang === 'ko' ? t[1] : t[2]])));
-      const dtier = (d) => !d.lo ? '' : d.lo < 100 ? 'c' : d.lo <= 170 ? 'm' : 'h';
-      list = list.filter((d) => (!F.dt || dtier(d) === F.dt) && (!F.dg || (d.tags || []).includes(F.dg)));
+      list = list.filter((d) => (!F.dt || bandOf('dresses', d) === F.dt) && (!F.dg || (d.tags || []).includes(F.dg)));
+    } else if (k === 'tux') {
+      filters.append(chipRow(L.fKind, 'tk', TKINDS.map((t) => [t[0], lang === 'ko' ? t[1] : t[2]])));
+      filters.append(chipRow(L.fTier, 'tt', [['c', lang === 'ko' ? '50만 미만' : 'Under ₩500k'], ['m', lang === 'ko' ? '50~100만' : '₩500k–1M'], ['h', lang === 'ko' ? '100만 초과' : 'Over ₩1M']]));
+      list = list.filter((x) => (!F.tk || x.kind === F.tk) && (!F.tt || bandOf('tux', x) === F.tt));
     } else if (k === 'makeup') {
       filters.append(chipRow(L.fMood, 'mm', MKMOODS.map((m) => [m[0], lang === 'ko' ? m[1] : m[2]])), chipRow(L.fTier, 'mt', TIERS.filter((x) => x[0] !== 'r').map((m) => [m[0], lang === 'ko' ? m[1] : m[2]])));
       list = list.filter((m) => (!F.mm || m.mood === F.mm) && (!F.mt || m.tier === F.mt));
@@ -265,7 +275,7 @@
     const slotKey = SLOT_OF[k], curId = k === 'studios' ? P.studio : P[slotKey].id;
     list.forEach((x) => {
       const card = h('article', { class: 'sdm-card' + (x.id === curId ? ' is-pick' : '') });
-      if (k === 'studios' || k === 'dresses') {
+      if (k === 'studios' || GARMENT.has(k)) {
         const pw = h('div', { class: 'sdm-phwrap' }, photoEl(x));
         if (k === 'studios' && x.mood) pw.append(h('span', { class: 'sdm-mood', text: pick(MOODS, x.mood, lang) }));
         if (k === 'studios' && W) pw.append(h('button', { type: 'button', class: 'sdm-heart', 'aria-pressed': String(P.short.includes(x.id)), 'aria-label': (P.short.includes(x.id) ? L.shortDel : L.shortAdd) + ' ' + nm(x), text: P.short.includes(x.id) ? '♥' : '♡', onclick: () => toggleShort(x.id) }));
@@ -280,7 +290,8 @@
       if (k === 'studios') bd.append(h('div', { class: 'sdm-mt', text: [pick(REGS, x.reg, lang), pick(FOCUS, x.focus, lang)].filter(Boolean).join(' · ') }));
       if (k === 'makeup' && x.artist) bd.append(h('div', { class: 'sdm-mt', text: L.artist + ' ' + x.artist }));
       const pr = h('div', { class: 'sdm-price' }, h('b', { text: priceTxt(x) }));
-      const tierK = k === 'dresses' ? (!x.lo ? '' : x.lo < 100 ? 'c' : x.lo <= 170 ? 'm' : 'h') : x.tier;
+      const tierK = GARMENT.has(k) ? bandOf(k, x) : x.tier;
+      if (k === 'tux' && x.kind) pr.append(h('span', { class: 'sdm-st plan', text: pick(TKINDS, x.kind, lang) }));
       if (tierK) pr.append(h('span', { class: 'sdm-st t-' + tierK, text: pick(TIERS, tierK, lang) }));
       if (k === 'studios' && x.total) pr.append(h('span', { class: 'sdm-st plan', text: L.pkg }));
       if (k === 'hair' && x.pop) pr.append(h('span', { class: 'sdm-st t-h', text: L.pop }));
@@ -322,7 +333,7 @@
     // ---------- add / edit form ----------
     function form(fk, item) {
       // The draft lives in `editing` so a re-render (e.g. the partner's edit arriving) keeps what was typed.
-      const x = editing.draft || (editing.draft = item ? { ...item } : { id: PREFIX[fk] + '-' + uid(), ko: '', en: '', lo: 0, hi: 0, tier: fk === 'dresses' ? '' : 'm', link: '', linkLabel: '', lineKo: '', lineEn: '', photo: '' });
+      const x = editing.draft || (editing.draft = item ? { ...item } : { id: PREFIX[fk] + '-' + uid(), ko: '', en: '', lo: 0, hi: 0, tier: GARMENT.has(fk) ? '' : 'm', kind: fk === 'tux' ? 'rent' : undefined, link: '', linkLabel: '', lineKo: '', lineEn: '', photo: '' });
       const f = h('form', { class: 'sdm-form', id: 'sdm-form' });
       const fld = (label, input, wide) => h('label', { class: 'sdm-lab' + (wide ? ' wide' : '') }, h('span', { text: label }), input);
       const inp = (key, attrs = {}) => { const i = h('input', { class: 'sdm-inp', value: x[key] ?? '', ...attrs }); i.addEventListener('input', () => { x[key] = attrs.inputmode ? num(i.value) : i.value; }); return i; };
@@ -331,7 +342,8 @@
       f.append(h('h3', { class: 'wide', text: (item ? L.edit : L.add) + ' · ' + L.cat[fk] }));
       f.append(fld(L.fKo, inp('ko', { maxlength: 60, required: true })), fld(L.fEn, inp('en', { maxlength: 60 })));
       f.append(fld(L.fLo, inp('lo', { inputmode: 'decimal' })), fld(L.fHi, inp('hi', { inputmode: 'decimal' })));
-      if (fk !== 'dresses') f.append(fld(L.fTier, sel('tier', fk === 'studios' ? TIERS : TIERS.filter((t) => t[0] !== 'r'))));
+      if (fk === 'tux') f.append(fld(L.fKind, sel('kind', TKINDS)));
+      if (!GARMENT.has(fk)) f.append(fld(L.fTier, sel('tier', fk === 'studios' ? TIERS : TIERS.filter((t) => t[0] !== 'r'))));
       if (fk === 'studios') {
         f.append(fld(L.fMood, sel('mood', [['', '—'], ...MOODS])), fld(L.fReg, sel('reg', [['', '—'], ...REGS])), fld(L.fFocus, sel('focus', [['', '—'], ...FOCUS])), chk('total', L.fTotal));
         const flags = [...String(x.flags || '----').padEnd(4, '-')].slice(0, 4);
@@ -356,7 +368,7 @@
       if (fk === 'hair') f.append(chk('pop', L.fPopular));
       f.append(fld(L.fLink, inp('link', { type: 'url', maxlength: 300, placeholder: 'https://' }), true), fld(L.fLinkLabel, inp('linkLabel', { maxlength: 60 })));
       f.append(fld(L.fLineKo, inp('lineKo', { maxlength: 140 }), true), fld(L.fLineEn, inp('lineEn', { maxlength: 140 }), true));
-      if (fk === 'studios' || fk === 'dresses') {
+      if (fk === 'studios' || GARMENT.has(fk)) {
         const prev = h('div', { class: 'sdm-formphoto' });
         const showPrev = () => { prev.innerHTML = ''; prev.append(x.photo ? photoEl(x) : h('div', { class: 'sdm-ph', text: L.noPhoto })); };
         showPrev();
@@ -427,7 +439,7 @@
 .sdm-btn.sm{padding:3px 10px;font-size:12.5px}
 .sdm-del{border:0;background:none;color:var(--muted);cursor:pointer;font-size:12.5px;padding:3px 6px;border-radius:4px}
 .sdm-del:hover,.sdm-del.arm{color:var(--bad)}.sdm-del.arm{background:var(--bad-soft)}
-.sdm-combo{display:grid;grid-template-columns:1.2fr 1fr 1fr 1fr;gap:12px}
+.sdm-combo{display:grid;grid-template-columns:1.2fr repeat(4,minmax(0,1fr));gap:12px}
 .sdm-slot{background:var(--surface);border:1.5px dashed var(--line);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:10px;min-width:0;transition:border-color .15s,background .15s}
 .sdm-slot.filled{border-style:solid}
 .sdm-over{border-color:var(--accent)!important;background:var(--accent-soft)!important}
@@ -506,7 +518,8 @@
 .sdm-file{font-size:12.5px;max-width:100%}
 .sdm-formacts{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 body.readonly .sdm .sdm-btn,body.readonly .sdm .sdm-del{display:none}
-@media (max-width:1000px){.sdm-combo{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:1100px){.sdm-combo{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:900px){.sdm-combo{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:760px){.sdm-combo{grid-template-columns:1fr}.sdm-sum{grid-template-columns:1fr}.sdm-acts{justify-content:flex-start}.sdm-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.sdm-bd{padding:10px}.sdm-flagedit{grid-template-columns:repeat(2,minmax(0,1fr))}}
 `;
     document.head.append(s);
