@@ -7,6 +7,8 @@
 // Access: trial → active (paid, set by an admin) → expired (read-only, export still works).
 // AI features need the plan's ai_enabled flag (paid add-on), except for site admins.
 
+import { buildSqlBackup, backupResponse } from './backup.js';
+
 const SHARED_KEYS = new Set([
   'budget', 'selectedVenue', 'selectedLoan', 'venues', 'nonVenue', 'afterCosts', 'honsu', 'categories', 'loans', 'seeded',
   'wedding', 'checks', 'tasks', 'expenses', 'split', 'guests', 'guestRate', 'giftLog', 'vendors'
@@ -541,6 +543,11 @@ async function api(req, env, url) {
     const mm = p.match(/^\/api\/admin\/plans\/(\d+)$/);
     if (mm && m === 'PATCH') return adminUpdatePlan(req, env, Number(mm[1]));
     if (p === '/api/admin/reset-link' && m === 'POST') return adminResetLink(req, env, url);
+    if (p === '/api/admin/backup' && m === 'GET') {
+      const envName = env.APP_ENV || 'production';
+      const { sql } = await buildSqlBackup(env.DB, { env: envName });
+      return backupResponse(sql, envName);
+    }
     return err(404, 'not_found');
   }
 

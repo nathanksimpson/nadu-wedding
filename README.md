@@ -48,9 +48,25 @@ owner and admin) and leaves the old `docs`/`history` tables untouched for rollba
 ## Release checklist (staging → live)
 
 1. Test on staging.
-2. Back up live: `npx wrangler d1 export nadu-wedding-db --remote --output backup.sql`
+2. Back up live: sign in on the live site and click **Full backup (.sql)** (Admin tab, or History →
+   Export on the original two-person version). The command-line equivalent is
+   `npx wrangler d1 export nadu-wedding-db --remote --output backup.sql`.
 3. Run pending migrations on live (`npm run migrate`).
 4. Merge `staging` into `main` and push; GitHub Actions deploys.
+
+## Backups and restore
+
+The in-app **Full backup** downloads `nadu-wedding-<env>-backup-<date>.sql`: every account (password
+hashes, not passwords), plan, member, invite, section and history entry. Sign-in sessions and rate-limit
+counters are left out, so after a restore everyone just signs in again. Restore into either database:
+
+```bash
+npx wrangler d1 execute nadu-wedding-db --remote --file nadu-wedding-production-backup-YYYYMMDD-HHMM.sql
+```
+
+The file recreates any missing tables and overwrites rows with the same ids, so it works on an empty
+database or on top of the current one. D1 Time Travel (`npx wrangler d1 time-travel restore`) can also
+roll the database back to any minute in the last 30 days.
 
 ## Develop
 

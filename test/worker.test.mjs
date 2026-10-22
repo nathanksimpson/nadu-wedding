@@ -119,6 +119,22 @@ ok(me.plans[0].access === 'active' && me.plans[0].writable && me.plans[0].ai, 'p
 ok((await call('/api/doc/guests', { method: 'PUT', sid: duyeon, plan: P1, body: { value: [], baseVersion: 3 } })).status === 200, 'writes work again after payment');
 ok((await call(`/api/admin/plans/${P1}`, { method: 'PATCH', sid: eve, body: { extendDays: 9999 } })).status === 404, 'non-admin cannot extend a plan');
 
+// ---- full backup (admin only) restores into an empty database ----
+ok((await call('/api/admin/backup', { sid: eve })).status === 404, 'non-admin cannot download the full backup');
+ok((await call('/api/admin/backup')).status === 401, 'signed-out visitors cannot download the full backup');
+{
+  const res = await worker.fetch(new Request(base + '/api/admin/backup', { headers: { cookie: 'sid=' + nathan, origin: base } }), env);
+  const sql = await res.text();
+  ok(res.status === 200 && /attachment; filename="nadu-wedding-staging-backup-\d{8}-\d{4}\.sql"/.test(res.headers.get('content-disposition') || ''), 'backup downloads as a dated .sql file');
+  ok(!sql.includes(nathan) && !/INSERT OR REPLACE INTO "sessions"/.test(sql), 'backup leaves out sign-in sessions');
+  const restored = new DatabaseSync(':memory:'); restored.exec(sql);
+  const tables = ['users', 'plans', 'plan_members', 'plan_invites', 'plan_docs', 'plan_history'];
+  const same = tables.every((t) => JSON.stringify(db.prepare(`SELECT * FROM ${t} ORDER BY rowid`).all()) === JSON.stringify(restored.prepare(`SELECT * FROM ${t} ORDER BY rowid`).all()));
+  ok(same, 'backup restores every account, plan, section and history row exactly');
+  const again = new DatabaseSync(':memory:'); again.exec(fs.readFileSync(new URL('../schema.sql', import.meta.url), 'utf8')); again.exec(sql); again.exec(sql);
+  ok(again.prepare('SELECT COUNT(*) AS n FROM plan_history').get().n === db.prepare('SELECT COUNT(*) AS n FROM plan_history').get().n, 'backup can be loaded onto an existing schema, even twice');
+}
+
 // ---- password reset ----
 r = await call('/api/forgot', { method: 'POST', body: { email: 'nobody@example.com' } });
 ok(r.status === 200 && r.data.ok, 'forgot-password answers ok for unknown emails (no account fishing)');
