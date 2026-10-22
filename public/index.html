@@ -554,6 +554,8 @@ body.gated .wrap { visibility: hidden; }
     </section>
   </div>
 
+  <div class="tabpanel app" data-panel="sdm"><div id="sdm-root"></div></div>
+
   <div class="tabpanel app" data-panel="vendors">
     <section id="vendors" class="app">
       <div class="sec-head"><h2 data-t="vendorTitle"></h2></div>
@@ -648,6 +650,7 @@ body.gated .wrap { visibility: hidden; }
 <div class="tip" id="tip"></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+<script src="/sdm.js"></script>
 <script>
 (function () {
   const KEY = 'wedding-planner-v2';
@@ -1299,7 +1302,18 @@ body.gated .wrap { visibility: hidden; }
     const fb = () => { ta.select(); toast(T('selected')); };
     try { navigator.clipboard ? navigator.clipboard.writeText(ta.value).then(() => toast(T('copied')), fb) : fb(); } catch (e) { fb(); }
   });
-  function load(obj) { if (obj && obj.app === 'nadu-wedding' && obj.data) obj = Object.assign({}, S, obj.data); if (!valid(obj)) { toast(T('badJson')); return; } const keepPrefs = {}; PREFS.forEach((k) => { keepPrefs[k] = S[k]; }); S = Object.assign(obj, keepPrefs); Sync.importing = true; ensureShape(); save(); renderAll(); toast(T('loaded')); }
+  // Photos can travel in an import file as { files: { name: { mime, data(base64) } } }; they upload to the plan.
+  async function loadFiles(files) {
+    const names = Object.keys(files || {}).filter((k) => /^[a-z0-9][a-z0-9._-]{0,63}$/.test(k));
+    let ok = 0;
+    for (const name of names) {
+      const f = files[name]; if (!f || !f.data) continue;
+      const bin = atob(f.data), bytes = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      if (await putPlanFile(name, new Blob([bytes], { type: f.mime || 'image/jpeg' }))) ok++;
+    }
+    if (names.length) { toast(T('filesLoaded')(ok, names.length)); if (S.tab === 'sdm') renderSdm(); }
+  }
+  function load(obj) { const files = obj && obj.files; if (obj && obj.app === 'nadu-wedding' && obj.data) obj = Object.assign({}, S, obj.data); if (files && Sync.plan && Sync.plan.writable) loadFiles(files); if (!valid(obj)) { toast(T('badJson')); return; } const keepPrefs = {}; PREFS.forEach((k) => { keepPrefs[k] = S[k]; }); S = Object.assign(obj, keepPrefs); Sync.importing = true; ensureShape(); save(); renderAll(); toast(T('loaded')); }
   $('io-load').addEventListener('click', () => { try { load(JSON.parse($('io-text').value)); } catch (e) { toast(T('readFail')); } });
   $('io-file').addEventListener('change', (e) => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => { try { load(JSON.parse(r.result)); } catch (er) { toast(T('fileFail')); } }; r.readAsText(f); });
   const rb = $('btn-reset');
@@ -1403,7 +1417,7 @@ body.gated .wrap { visibility: hidden; }
   const cname = (k) => pick3(BCATS, k), pname = (k) => pick3(PARTIES, k);
 
   Object.assign(L.ko, {
-    eyebrow: 'Nadu Wedding Planner · 나두 웨딩 플래너', tDash: '대시보드', tPlan: '예산 계획', tList: '체크리스트', tSpend: '지출·정산', tGuests: '하객', tGifts: '축의금', tVendors: '업체 비교',
+    eyebrow: 'Nadu Wedding Planner · 나두 웨딩 플래너', tDash: '대시보드', tPlan: '예산 계획', tList: '체크리스트', tSpend: '지출·정산', tGuests: '하객', tGifts: '축의금', tVendors: '업체 비교', tSdm: '스드메',
     wd: '예식 날짜', prog: '준비 진행률', nodate: '예식 날짜를 넣으면 단계별 실제 날짜가 계산돼요', dday: '예식 당일',
     all: '전체', open: '남은 일', late: '밀린 일', key: '핵심', tipL: 'TIP', add: '추가', addph: '우리만의 할 일 추가', now: '지금 할 차례', overdue: '밀린 일 ', mine: '직접 추가',
     dUp: '다가오는 할 일', dStage: '시기별 진행률', upEmpty: '남은 할 일이 없어요', upNoDate: '예식 날짜를 넣으면 날짜순으로 보여드려요',
@@ -1422,7 +1436,7 @@ body.gated .wrap { visibility: hidden; }
     repPrep: '준비 현황', repSpend: '지출·정산', repPeople: '하객·축의금'
   });
   Object.assign(L.en, {
-    eyebrow: 'Nadu Wedding Planner', tDash: 'Dashboard', tPlan: 'Budget plan', tList: 'Checklist', tSpend: 'Spending & split', tGuests: 'Guests', tGifts: 'Gift money', tVendors: 'Vendors',
+    eyebrow: 'Nadu Wedding Planner', tDash: 'Dashboard', tPlan: 'Budget plan', tList: 'Checklist', tSpend: 'Spending & split', tGuests: 'Guests', tGifts: 'Gift money', tVendors: 'Vendors', tSdm: 'Studio & dress',
     wd: 'Wedding date', prog: 'Progress', nodate: 'Set the wedding date to see real dates for each stage', dday: 'Wedding day',
     all: 'All', open: 'To do', late: 'Overdue', key: 'Key', tipL: 'TIP', add: 'Add', addph: 'Add our own task', now: 'Up now', overdue: 'Overdue ', mine: 'Added by us',
     dUp: 'Coming up', dStage: 'Progress by stage', upEmpty: 'Nothing left to do', upNoDate: 'Set the wedding date to sort these by date',
@@ -1445,9 +1459,10 @@ body.gated .wrap { visibility: hidden; }
     S.wedding = S.wedding || ''; S.checks = S.checks || {}; S.tasks = S.tasks || [];
     S.expenses = S.expenses || []; S.split = S.split || { g: 25, b: 25, gp: 25, bp: 25 };
     S.guests = S.guests || []; S.guestRate = S.guestRate ?? 60; S.giftLog = S.giftLog || []; S.vendors = S.vendors || [];
+    S.sdmCatalog = S.sdmCatalog || { studios: [], dresses: [], makeup: [], hair: [] }; S.sdm = S.sdm || window.NaduSdm.emptyPicks();
     if (!S.tab) S.tab = 'dash';
   }
-  const PREP_KEYS = ['wedding', 'checks', 'tasks', 'expenses', 'split', 'guests', 'guestRate', 'giftLog', 'vendors', 'tab', 'skin', 'collapsed'];
+  const PREP_KEYS = ['wedding', 'checks', 'tasks', 'expenses', 'split', 'guests', 'guestRate', 'giftLog', 'vendors', 'sdm', 'sdmCatalog', 'tab', 'skin', 'collapsed'];
 
   // ---------- dates ----------
   const dayNum = (s) => { const [y, m, d] = s.split('-').map(Number); return Date.UTC(y, m - 1, d) / 864e5; };
@@ -1481,7 +1496,7 @@ body.gated .wrap { visibility: hidden; }
   function rowActs(onEdit, onDel) { return el('td', {}, el('div', { class: 'rowacts' }, onEdit ? Object.assign(el('button', { type: 'button', text: T('edit') }), { onclick: onEdit }) : null, delBtn('Delete', onDel))); }
 
   // ---------- header, tabs ----------
-  const TABS = [['dash', 'tDash'], ['plan', 'tPlan'], ['list', 'tList'], ['spend', 'tSpend'], ['guests', 'tGuests'], ['gifts', 'tGifts'], ['vendors', 'tVendors'], ['history', 'tHistory'], ['settings', 'tSettings'], ['admin', 'tAdmin']];
+  const TABS = [['dash', 'tDash'], ['plan', 'tPlan'], ['list', 'tList'], ['spend', 'tSpend'], ['guests', 'tGuests'], ['gifts', 'tGifts'], ['sdm', 'tSdm'], ['vendors', 'tVendors'], ['history', 'tHistory'], ['settings', 'tSettings'], ['admin', 'tAdmin']];
   function renderTabs() {
     const nav = $('tabs'); nav.innerHTML = '';
     visibleTabs().forEach(([k, lab]) => {
@@ -1497,7 +1512,7 @@ body.gated .wrap { visibility: hidden; }
     TABS.forEach(([k]) => $('tab-' + k)?.setAttribute('aria-selected', String(k === S.tab)));
     renderPanel();
   }
-  function renderPanel() { ({ dash: renderDash, list: renderList, spend: renderSpend, guests: renderGuests, gifts: renderGifts, vendors: renderVendors, history: () => renderHistory(true), settings: renderSettings, admin: renderAdmin }[S.tab] || (() => {}))(); prepSums(); }
+  function renderPanel() { ({ dash: renderDash, list: renderList, spend: renderSpend, guests: renderGuests, gifts: renderGifts, vendors: renderVendors, sdm: renderSdm, history: () => renderHistory(true), settings: renderSettings, admin: renderAdmin }[S.tab] || (() => {}))(); prepSums(); }
   function renderHeader() {
     const h = $('title-h1'); h.innerHTML = '';
     const pl = Sync.plan || {};
@@ -1813,6 +1828,35 @@ body.gated .wrap { visibility: hidden; }
   }
 
   // ---------- vendors ----------
+  // ---------- 스드메 (studio / dress / makeup picker, see sdm.js) ----------
+  function renderSdm() {
+    const line = (S.nonVenue || []).find((x) => x.ko === '스드메');
+    window.NaduSdm.render($('sdm-root'), {
+      lang: S.lang, writable: !!(Sync.plan && Sync.plan.writable),
+      catalog: S.sdmCatalog, picks: S.sdm, budgetFallback: line ? n(line.amount) : 0,
+      setPicks: (p) => { S.sdm = p; save(); renderSdm(); },
+      setCatalog: (c) => { S.sdmCatalog = c; save(); renderSdm(); },
+      rerender: renderSdm, toast,
+      fileUrl: (name) => '/api/plan/files/' + encodeURIComponent(name) + '?plan=' + Sync.planId,
+      uploadFile: (name, blob) => putPlanFile(name, blob),
+      addVendors: (rows) => {
+        let k = 0;
+        rows.forEach((r) => {
+          if (!r.name || S.vendors.some((v) => v.sdmRef === r.ref || (v.cat === 'sdm' && v.name === r.name))) return;
+          S.vendors.push({ id: uid(), cat: 'sdm', name: r.name, quote: r.price || 0, final: 0, memo: '', sdmRef: r.ref }); k++;
+        });
+        if (k) save();
+        return k;
+      }
+    });
+  }
+  async function putPlanFile(name, blob) {
+    try {
+      const r = await fetch('/api/plan/files/' + encodeURIComponent(name), { method: 'PUT', credentials: 'same-origin', headers: { 'content-type': blob.type || 'image/jpeg', 'x-plan-id': String(Sync.planId) }, body: blob });
+      return r.ok;
+    } catch (e) { return false; }
+  }
+
   function renderVendors() {
     const tbl = $('vendor-table'); tbl.innerHTML = '';
     thead(tbl, [[T('fVendor'), 'l'], [T('fQuote')], [T('fFinal')], [T('savedL')], [T('fMemo'), 'l'], [T('pickL'), 'l'], ['']]);
@@ -1870,7 +1914,7 @@ body.gated .wrap { visibility: hidden; }
   // against the latest version; otherwise the server returns the newer copy, we merge both people's
   // edits (record by record, field by field) and try again. Every saved version is kept as history.
   const SHARED = ['budget', 'selectedVenue', 'selectedLoan', 'venues', 'nonVenue', 'afterCosts', 'honsu', 'categories', 'loans', 'seeded',
-    'wedding', 'checks', 'tasks', 'expenses', 'split', 'guests', 'guestRate', 'giftLog', 'vendors'];
+    'wedding', 'checks', 'tasks', 'expenses', 'split', 'guests', 'guestRate', 'giftLog', 'vendors', 'sdm', 'sdmCatalog'];
   const PREFS = ['lang', 'skin', 'tab', 'collapsed', 'report', 'planId'];
   const PREF_KEY = 'nadu-wedding-prefs-v1';
   const Sync = { me: null, plans: [], planId: null, plan: null, users: {}, base: {}, ver: {}, seq: 0, timer: null, inflight: false, again: false, merged: false, poller: null, lastEdit: null, status: 'idle' };
@@ -1887,8 +1931,8 @@ body.gated .wrap { visibility: hidden; }
     lastBy: (who, when) => `마지막 수정 ${who} · ${when}`, ago: { s: '방금', m: (k) => `${k}분 전`, h: (k) => `${k}시간 전`, d: (k) => `${k}일 전` },
     histHelp: '모든 저장은 항목별 버전으로 남아요. 이전 버전으로 되돌려도 지금 버전은 기록에 그대로 남습니다.', hWhen: '시각', hWho: '수정한 사람', hWhat: '항목', hVer: '버전', hAct: '종류',
     aEdit: '수정', aRestore: '되돌림', aImport: '가져오기', restoreL: '이 버전으로 되돌리기', restoreQ: '정말 되돌릴까요?', restored: '이전 버전으로 되돌렸어요', more: '더 보기', histEmpty: '아직 기록이 없어요',
-    exportTitle: '내보내기', exBackup: '전체 백업 (.sql)', exJson: '전체 데이터 (JSON)', exExp: '지출 CSV', exGuests: '하객 CSV', exGifts: '축의금 CSV', exVendors: '업체 CSV', exHist: '변경 기록 CSV',
-    keyLabels: { budget: '예산 기준', selectedVenue: '선택한 예식장', selectedLoan: '선택한 대출', venues: '예식장 옵션', nonVenue: '예식장 외 비용', afterCosts: '입주 비용', honsu: '혼수', categories: '추가 카테고리', loans: '대출 옵션', seeded: '기본 옵션', wedding: '예식 날짜', checks: '체크리스트 완료', tasks: '직접 추가한 할 일', expenses: '지출 내역', split: '분담 비율', guests: '하객 명단', guestRate: '미정 참석률', giftLog: '받은 축의금', vendors: '업체 비교' }
+    filesLoaded: (a, b) => `사진 ${a}/${b}장을 올렸어요`, exportTitle: '내보내기', exBackup: '전체 백업 (.sql)', exJson: '전체 데이터 (JSON)', exExp: '지출 CSV', exGuests: '하객 CSV', exGifts: '축의금 CSV', exVendors: '업체 CSV', exHist: '변경 기록 CSV',
+    keyLabels: { budget: '예산 기준', selectedVenue: '선택한 예식장', selectedLoan: '선택한 대출', venues: '예식장 옵션', nonVenue: '예식장 외 비용', afterCosts: '입주 비용', honsu: '혼수', categories: '추가 카테고리', loans: '대출 옵션', seeded: '기본 옵션', wedding: '예식 날짜', checks: '체크리스트 완료', tasks: '직접 추가한 할 일', expenses: '지출 내역', split: '분담 비율', guests: '하객 명단', guestRate: '미정 참석률', giftLog: '받은 축의금', vendors: '업체 비교', sdm: '스드메 조합', sdmCatalog: '스드메 업체 목록' }
   });
   Object.assign(L.en, {
     tHistory: 'History', printNow: 'Print · Save as PDF', gUser: 'Username', gPass: 'Password', gDisplay: 'Display name', gInvite: 'Invite code', gLogin: 'Sign in', gSignup: 'Create account',
@@ -1898,8 +1942,8 @@ body.gated .wrap { visibility: hidden; }
     lastBy: (who, when) => `Last edit by ${who} · ${when}`, ago: { s: 'just now', m: (k) => `${k} min ago`, h: (k) => `${k} h ago`, d: (k) => `${k} d ago` },
     histHelp: 'Every save is kept as a version of that section. Restoring an old version adds a new version, so nothing is lost.', hWhen: 'When', hWho: 'Who', hWhat: 'Section', hVer: 'Version', hAct: 'Type',
     aEdit: 'Edit', aRestore: 'Restore', aImport: 'Import', restoreL: 'Restore this version', restoreQ: 'Restore it?', restored: 'Restored the earlier version', more: 'Load more', histEmpty: 'No history yet',
-    exportTitle: 'Export', exBackup: 'Full backup (.sql)', exJson: 'All data (JSON)', exExp: 'Expenses CSV', exGuests: 'Guests CSV', exGifts: 'Gift money CSV', exVendors: 'Vendors CSV', exHist: 'History CSV',
-    keyLabels: { budget: 'Budget inputs', selectedVenue: 'Selected venue', selectedLoan: 'Selected loan', venues: 'Venue options', nonVenue: 'Non-venue costs', afterCosts: 'Move-in costs', honsu: '혼수', categories: 'Extra categories', loans: 'Loan options', seeded: 'Default options', wedding: 'Wedding date', checks: 'Checklist ticks', tasks: 'Our own tasks', expenses: 'Expenses', split: 'Split ratio', guests: 'Guest list', guestRate: 'Maybe attendance rate', giftLog: 'Gift money', vendors: 'Vendors' }
+    filesLoaded: (a, b) => `Uploaded ${a} of ${b} photos`, exportTitle: 'Export', exBackup: 'Full backup (.sql)', exJson: 'All data (JSON)', exExp: 'Expenses CSV', exGuests: 'Guests CSV', exGifts: 'Gift money CSV', exVendors: 'Vendors CSV', exHist: 'History CSV',
+    keyLabels: { budget: 'Budget inputs', selectedVenue: 'Selected venue', selectedLoan: 'Selected loan', venues: 'Venue options', nonVenue: 'Non-venue costs', afterCosts: 'Move-in costs', honsu: '혼수', categories: 'Extra categories', loans: 'Loan options', seeded: 'Default options', wedding: 'Wedding date', checks: 'Checklist ticks', tasks: 'Our own tasks', expenses: 'Expenses', split: 'Split ratio', guests: 'Guest list', guestRate: 'Maybe attendance rate', giftLog: 'Gift money', vendors: 'Vendors', sdm: 'Studio/dress combo', sdmCatalog: 'Studio/dress listings' }
   });
 
   // ---------- three-way merge ----------

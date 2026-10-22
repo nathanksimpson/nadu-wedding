@@ -81,6 +81,18 @@ CREATE TABLE IF NOT EXISTS plan_history (
 CREATE INDEX IF NOT EXISTS plan_history_plan ON plan_history(plan_id, id);
 CREATE INDEX IF NOT EXISTS plan_history_key ON plan_history(plan_id, key, id);
 
+-- Per-plan files (photos for the 스드메 catalog), base64 so backups stay plain SQL.
+CREATE TABLE IF NOT EXISTS plan_files (
+  plan_id INTEGER NOT NULL,
+  name TEXT NOT NULL,
+  mime TEXT NOT NULL,
+  size INTEGER NOT NULL,
+  data TEXT NOT NULL,
+  updated_by INTEGER,
+  updated_at TEXT NOT NULL,
+  PRIMARY KEY (plan_id, name)
+);
+
 CREATE TABLE IF NOT EXISTS password_resets (
   token_hash TEXT PRIMARY KEY,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,

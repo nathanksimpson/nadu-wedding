@@ -11,7 +11,7 @@ import { buildSqlBackup, backupResponse } from './backup.js';
 
 const SHARED_KEYS = new Set([
   'budget', 'selectedVenue', 'selectedLoan', 'venues', 'nonVenue', 'afterCosts', 'honsu', 'categories', 'loans', 'seeded',
-  'wedding', 'checks', 'tasks', 'expenses', 'split', 'guests', 'guestRate', 'giftLog', 'vendors'
+  'wedding', 'checks', 'tasks', 'expenses', 'split', 'guests', 'guestRate', 'giftLog', 'vendors', 'sdm', 'sdmCatalog'
 ]);
 const SESSION_DAYS = 30;
 const MAX_DOC_BYTES = 400_000;
@@ -127,6 +127,7 @@ async function deletePlan(env, planId) {
   await env.DB.batch([
     env.DB.prepare('DELETE FROM plan_docs WHERE plan_id = ?').bind(planId),
     env.DB.prepare('DELETE FROM plan_history WHERE plan_id = ?').bind(planId),
+    env.DB.prepare('DELETE FROM plan_files WHERE plan_id = ?').bind(planId),
     env.DB.prepare('DELETE FROM plan_invites WHERE plan_id = ?').bind(planId),
     env.DB.prepare('DELETE FROM plan_members WHERE plan_id = ?').bind(planId),
     env.DB.prepare('DELETE FROM plans WHERE id = ?').bind(planId)
@@ -414,6 +415,41 @@ async function putDoc(req, env, ctx, key) {
   const r = await writeDoc(env, ctx.plan.id, key, b.value, Number(b.baseVersion || 0), ctx.userId, b.action === 'import' ? 'import' : 'edit');
   return json(r.body, r.status);
 }
+// ---------- plan files (photos) ----------
+const FILE_NAME = /^[a-z0-9][a-z0-9._-]{0,63}$/;
+const FILE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
+const MAX_FILE_BYTES = 700_000, MAX_PLAN_FILES = 400, MAX_PLAN_FILE_BYTES = 40_000_000;
+function b64encode(bytes) { let s = ''; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000)); return btoa(s); }
+function b64decode(str) { const bin = atob(str), out = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i); return out; }
+async function getFile(env, ctx, name) {
+  if (!FILE_NAME.test(name)) return err(404, 'not_found');
+  const f = await env.DB.prepare('SELECT mime, data, updated_at FROM plan_files WHERE plan_id = ? AND name = ?').bind(ctx.plan.id, name).first();
+  if (!f) return err(404, 'not_found');
+  return new Response(b64decode(f.data), { headers: {
+    'content-type': f.mime, 'cache-control': 'private, max-age=300', 'x-content-type-options': 'nosniff',
+    'content-security-policy': "default-src 'none'; sandbox", 'last-modified': new Date(f.updated_at).toUTCString() } });
+}
+async function putFile(req, env, ctx, name) {
+  if (!ctx.view.writable) return readOnly(ctx);
+  if (!FILE_NAME.test(name)) return err(400, 'bad_name');
+  const mime = (req.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+  if (!FILE_TYPES.has(mime)) return err(415, 'unsupported_type');
+  const bytes = new Uint8Array(await req.arrayBuffer());
+  if (!bytes.length) return err(400, 'empty');
+  if (bytes.length > MAX_FILE_BYTES) return err(413, 'too_large');
+  const tot = await env.DB.prepare('SELECT COUNT(*) AS n, COALESCE(SUM(size), 0) AS b FROM plan_files WHERE plan_id = ? AND name != ?').bind(ctx.plan.id, name).first();
+  if (tot.n >= MAX_PLAN_FILES || tot.b + bytes.length > MAX_PLAN_FILE_BYTES) return err(413, 'plan_storage_full');
+  await env.DB.prepare('INSERT OR REPLACE INTO plan_files (plan_id, name, mime, size, data, updated_by, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
+    .bind(ctx.plan.id, name, mime, bytes.length, b64encode(bytes), ctx.userId, nowIso()).run();
+  return json({ ok: true, name, size: bytes.length });
+}
+async function deleteFile(env, ctx, name) {
+  if (!ctx.view.writable) return readOnly(ctx);
+  if (!FILE_NAME.test(name)) return err(400, 'bad_name');
+  await env.DB.prepare('DELETE FROM plan_files WHERE plan_id = ? AND name = ?').bind(ctx.plan.id, name).run();
+  return json({ ok: true });
+}
+
 async function changes(env, ctx, url) {
   const since = Number(url.searchParams.get('since') || 0);
   const seq = await seqNow(env, ctx.plan.id);
@@ -567,6 +603,13 @@ async function api(req, env, url) {
   if (p.startsWith('/api/history/') && m === 'GET') return historyItem(env, ctx, Number(p.split('/').pop()));
   if (p === '/api/restore' && m === 'POST') return restore(req, env, ctx);
   if (p === '/api/export' && m === 'GET') return exportAll(env, ctx);
+  const fm = p.match(/^\/api\/plan\/files\/([^/]+)$/);
+  if (fm) {
+    const name = decodeURIComponent(fm[1]);
+    if (m === 'GET') return getFile(env, ctx, name);
+    if (m === 'PUT') return putFile(req, env, ctx, name);
+    if (m === 'DELETE') return deleteFile(env, ctx, name);
+  }
   if (p.startsWith('/api/doc/') && m === 'PUT') return putDoc(req, env, ctx, decodeURIComponent(p.slice('/api/doc/'.length)));
   return err(404, 'not_found');
 }

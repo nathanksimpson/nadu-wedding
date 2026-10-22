@@ -90,6 +90,28 @@ await call('/api/plans/join', { method: 'POST', sid: mom, body: { code: vcode } 
 ok((await call('/api/state', { sid: mom, plan: P1 })).status === 200, 'viewer can read');
 r = await call('/api/doc/guests', { method: 'PUT', sid: mom, plan: P1, body: { value: [], baseVersion: 2 } });
 ok(r.status === 403 && r.data.error === 'read_only', 'viewer cannot write');
+
+// ---- 스드메 sections and plan photos ----
+ok((await call('/api/doc/sdmCatalog', { method: 'PUT', sid: nathan, plan: P1, body: { value: { studios: [{ id: 's1', ko: '테스트 스튜디오', lo: 100, hi: 120 }] }, baseVersion: 0, action: 'import' } })).status === 200, 'sdmCatalog section saves');
+ok((await call('/api/doc/sdm', { method: 'PUT', sid: nathan, plan: P1, body: { value: { studio: 's1', short: ['s1'] }, baseVersion: 0 } })).status === 200, 'sdm picks section saves');
+const putFile = (sid, plan, name, bytes, type = 'image/jpeg') => worker.fetch(new Request(base + '/api/plan/files/' + name, { method: 'PUT', headers: { cookie: 'sid=' + sid, origin: base, 'content-type': type, 'x-plan-id': String(plan) }, body: bytes }), env);
+const getFile = (sid, plan, name) => worker.fetch(new Request(base + '/api/plan/files/' + name + '?plan=' + plan, { headers: { cookie: 'sid=' + sid } }), env);
+const jpg = new Uint8Array([0xff, 0xd8, 0xff, 0xe0, 1, 2, 3, 250, 0, 0xff, 0xd9]);
+ok((await putFile(nathan, P1, 'sdm-s1.jpg', jpg)).status === 200, 'editor uploads a plan photo');
+let fr = await getFile(duyeon, P1, 'sdm-s1.jpg');
+ok(fr.status === 200 && fr.headers.get('content-type') === 'image/jpeg' && Buffer.from(await fr.arrayBuffer()).equals(Buffer.from(jpg)), 'plan member downloads the same bytes');
+ok((await getFile(mom, P1, 'sdm-s1.jpg')).status === 200, 'viewer can see plan photos');
+ok((await putFile(mom, P1, 'sdm-x.jpg', jpg)).status === 403, 'viewer cannot upload photos');
+ok((await getFile(eve, P1, 'sdm-s1.jpg')).status === 404, 'ISOLATION: cannot read another plan\'s photo');
+ok((await getFile(eve, P2, 'sdm-s1.jpg')).status === 404, 'ISOLATION: photo names are per plan');
+ok((await putFile(eve, P1, 'sdm-s1.jpg', jpg)).status === 404, 'ISOLATION: cannot overwrite another plan\'s photo');
+ok((await worker.fetch(new Request(base + '/api/plan/files/sdm-s1.jpg?plan=' + P1), env)).status === 401, 'photos need sign-in');
+ok((await putFile(nathan, P1, 'evil.html', new TextEncoder().encode('<script>'), 'text/html')).status === 415, 'only image types are accepted');
+ok((await putFile(nathan, P1, '../x.jpg', jpg)).status !== 200, 'file names are restricted');
+ok((await putFile(nathan, P1, 'big.jpg', new Uint8Array(800_000))).status === 413, 'oversized photos rejected');
+ok((await worker.fetch(new Request(base + '/api/plan/files/sdm-s1.jpg', { method: 'DELETE', headers: { cookie: 'sid=' + nathan, origin: base, 'x-plan-id': String(P1) } }), env)).status === 200, 'editor deletes a photo');
+ok((await getFile(nathan, P1, 'sdm-s1.jpg')).status === 404, 'deleted photo is gone');
+await putFile(nathan, P1, 'sdm-s1.jpg', jpg);
 const members = (await call('/api/plan/members', { sid: nathan, plan: P1 })).data.members;
 ok(members.length === 3 && members.map((m) => m.role).join() === 'owner,editor,viewer', 'members list with roles');
 const momId = members.find((m) => m.display === '엄마').id;
@@ -128,7 +150,7 @@ ok((await call('/api/admin/backup')).status === 401, 'signed-out visitors cannot
   ok(res.status === 200 && /attachment; filename="nadu-wedding-staging-backup-\d{8}-\d{4}\.sql"/.test(res.headers.get('content-disposition') || ''), 'backup downloads as a dated .sql file');
   ok(!sql.includes(nathan) && !/INSERT OR REPLACE INTO "sessions"/.test(sql), 'backup leaves out sign-in sessions');
   const restored = new DatabaseSync(':memory:'); restored.exec(sql);
-  const tables = ['users', 'plans', 'plan_members', 'plan_invites', 'plan_docs', 'plan_history'];
+  const tables = ['users', 'plans', 'plan_members', 'plan_invites', 'plan_docs', 'plan_history', 'plan_files'];
   const same = tables.every((t) => JSON.stringify(db.prepare(`SELECT * FROM ${t} ORDER BY rowid`).all()) === JSON.stringify(restored.prepare(`SELECT * FROM ${t} ORDER BY rowid`).all()));
   ok(same, 'backup restores every account, plan, section and history row exactly');
   const again = new DatabaseSync(':memory:'); again.exec(fs.readFileSync(new URL('../schema.sql', import.meta.url), 'utf8')); again.exec(sql); again.exec(sql);
