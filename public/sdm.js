@@ -62,7 +62,17 @@
   // ---------- helpers ----------
   const num = (v) => { const n = parseFloat(String(v ?? '').replace(/[^\d.-]/g, '')); return isNaN(n) ? 0 : n; };
   const won = (lang, n) => lang === 'ko' ? Math.round(n || 0).toLocaleString('ko-KR') + '원' : '₩' + Math.round(n || 0).toLocaleString('en-US');
-  const pick = (arr, k, lang) => { const r = arr.find((x) => x[0] === k); return r ? (lang === 'ko' ? r[1] : r[2]) : ''; };
+  // Labels below are Korean/English pairs; other languages translate the English side (ctx.tx, from the language file).
+  let tr = (s) => s;
+  const pick = (arr, k, lang) => { const r = arr.find((x) => x[0] === k); return r ? (lang === 'ko' ? r[1] : tr(r[2])) : ''; };
+  const strCache = {};
+  const deepMerge = (base, over) => { const out = { ...base }; for (const [k, v] of Object.entries(over || {})) out[k] = v && typeof v === 'object' && !Array.isArray(v) && base[k] && typeof base[k] === 'object' && !Array.isArray(base[k]) ? deepMerge(base[k], v) : v; return out; };
+  function strings(lg) {
+    if (lg === 'ko' || lg === 'en') return STR[lg];
+    const pack = window.NaduI18n && window.NaduI18n[lg];
+    if (!pack) return STR.en;
+    return strCache[lg] || (strCache[lg] = deepMerge(STR.en, pack.sdm || {}));
+  }
   const uid = () => Math.random().toString(36).slice(2, 8);
   function h(tag, attrs, ...kids) {
     const e = document.createElement(tag);
@@ -102,7 +112,9 @@
   function render(host, ctx) {
     if (!host) return;
     injectCss();
-    const L = STR[ctx.lang === 'en' ? 'en' : 'ko'], lang = ctx.lang === 'en' ? 'en' : 'ko';
+    // lang picks the Korean or English side of built-in data; L holds the interface text in the chosen language.
+    const L = strings(ctx.lang || 'ko'), lang = ctx.lang === 'ko' || !ctx.lang ? 'ko' : 'en';
+    tr = ctx.tx || ((x) => x);
     const cat = normCatalog(ctx.catalog), P = normPicks(ctx.picks, cat), W = !!ctx.writable;
     const byId = (k, id) => cat[k].find((x) => x.id === id);
     const nm = (x) => (lang === 'en' && x.en ? x.en : x.ko) || x.en || '';
@@ -248,25 +260,25 @@
     const k = F.cat;
     let list = cat[k].slice();
     if (k === 'studios') {
-      filters.append(chipRow(L.fMood, 'mood', MOODS.map((m) => [m[0], lang === 'ko' ? m[1] : m[2]])), chipRow(L.fTier, 'tier', TIERS.map((m) => [m[0], lang === 'ko' ? m[1] : m[2]])));
+      filters.append(chipRow(L.fMood, 'mood', MOODS.map((m) => [m[0], lang === 'ko' ? m[1] : tr(m[2])])), chipRow(L.fTier, 'tier', TIERS.map((m) => [m[0], lang === 'ko' ? m[1] : tr(m[2])])));
       const regsUsed = REGS.filter((r) => cat.studios.some((x) => x.reg === r[0]));
-      const r3 = chipRow(L.fReg, 'reg', regsUsed.map((m) => [m[0], lang === 'ko' ? m[1] : m[2]])); r3.append(toggleChip(L.fShort, 'short'));
+      const r3 = chipRow(L.fReg, 'reg', regsUsed.map((m) => [m[0], lang === 'ko' ? m[1] : tr(m[2])])); r3.append(toggleChip(L.fShort, 'short'));
       const so = h('select', { class: 'sdm-inp sdm-sort', 'aria-label': L.sort, onchange: (e) => setF({ sort: e.target.value }) }, h('option', { value: 'price', text: L.sortPrice }), h('option', { value: 'name', text: L.sortName }));
       so.value = F.sort; r3.append(so); filters.append(r3);
       list = list.filter((x) => (!F.mood || x.mood === F.mood) && (!F.tier || x.tier === F.tier) && (!F.reg || x.reg === F.reg) && (!F.short || P.short.includes(x.id)));
     } else if (k === 'dresses') {
       filters.append(chipRow(L.fTier, 'dt', [['c', lang === 'ko' ? '100만 미만' : 'Under ₩1M'], ['m', lang === 'ko' ? '100~170만' : '₩1M–1.7M'], ['h', lang === 'ko' ? '170만 초과' : 'Over ₩1.7M']]));
-      filters.append(chipRow(L.fStyle, 'dg', DTAGS.filter((t) => cat.dresses.some((d) => (d.tags || []).includes(t[0]))).map((t) => [t[0], lang === 'ko' ? t[1] : t[2]])));
+      filters.append(chipRow(L.fStyle, 'dg', DTAGS.filter((t) => cat.dresses.some((d) => (d.tags || []).includes(t[0]))).map((t) => [t[0], lang === 'ko' ? t[1] : tr(t[2])])));
       list = list.filter((d) => (!F.dt || bandOf('dresses', d) === F.dt) && (!F.dg || (d.tags || []).includes(F.dg)));
     } else if (k === 'tux') {
-      filters.append(chipRow(L.fKind, 'tk', TKINDS.map((t) => [t[0], lang === 'ko' ? t[1] : t[2]])));
+      filters.append(chipRow(L.fKind, 'tk', TKINDS.map((t) => [t[0], lang === 'ko' ? t[1] : tr(t[2])])));
       filters.append(chipRow(L.fTier, 'tt', [['c', lang === 'ko' ? '50만 미만' : 'Under ₩500k'], ['m', lang === 'ko' ? '50~100만' : '₩500k–1M'], ['h', lang === 'ko' ? '100만 초과' : 'Over ₩1M']]));
       list = list.filter((x) => (!F.tk || x.kind === F.tk) && (!F.tt || bandOf('tux', x) === F.tt));
     } else if (k === 'makeup') {
-      filters.append(chipRow(L.fMood, 'mm', MKMOODS.map((m) => [m[0], lang === 'ko' ? m[1] : m[2]])), chipRow(L.fTier, 'mt', TIERS.filter((x) => x[0] !== 'r').map((m) => [m[0], lang === 'ko' ? m[1] : m[2]])));
+      filters.append(chipRow(L.fMood, 'mm', MKMOODS.map((m) => [m[0], lang === 'ko' ? m[1] : tr(m[2])])), chipRow(L.fTier, 'mt', TIERS.filter((x) => x[0] !== 'r').map((m) => [m[0], lang === 'ko' ? m[1] : tr(m[2])])));
       list = list.filter((m) => (!F.mm || m.mood === F.mm) && (!F.mt || m.tier === F.mt));
     } else {
-      const r = chipRow(L.fTier, 'ht', TIERS.filter((x) => x[0] !== 'r').map((m) => [m[0], lang === 'ko' ? m[1] : m[2]])); r.append(toggleChip(L.fPop, 'hp')); filters.append(r);
+      const r = chipRow(L.fTier, 'ht', TIERS.filter((x) => x[0] !== 'r').map((m) => [m[0], lang === 'ko' ? m[1] : tr(m[2])])); r.append(toggleChip(L.fPop, 'hp')); filters.append(r);
       list = list.filter((x) => (!F.ht || x.tier === F.ht) && (!F.hp || x.pop));
     }
     list.sort(k === 'studios' && F.sort === 'name' ? (a, b) => nm(a).localeCompare(nm(b), lang) : (a, b) => (num(a.lo) || 9999) - (num(b.lo) || 9999) || num(a.hi) - num(b.hi));
@@ -283,8 +295,8 @@
       } else {
         const mm = MKMOODS.find((m) => m[0] === x.mood);
         card.append(h('div', { class: 'sdm-band ' + (k === 'hair' ? 'mood-hr' : 'mood-' + (x.mood || 'pu')) },
-          h('span', { class: 'ml', text: k === 'hair' ? pick(TIERS, x.tier, lang) : mm ? (lang === 'ko' ? mm[1] : mm[2]) : '' }),
-          h('span', { class: 'tone', text: k === 'hair' ? (x.pop ? L.pop : L.slot.hair) : mm ? (lang === 'ko' ? mm[3] : mm[4]) : '' })));
+          h('span', { class: 'ml', text: k === 'hair' ? pick(TIERS, x.tier, lang) : mm ? (lang === 'ko' ? mm[1] : tr(mm[2])) : '' }),
+          h('span', { class: 'tone', text: k === 'hair' ? (x.pop ? L.pop : L.slot.hair) : mm ? (lang === 'ko' ? mm[3] : tr(mm[4])) : '' })));
       }
       const bd = h('div', { class: 'sdm-bd' }, h('div', { class: 'sdm-nm', text: nm(x) }));
       if (k === 'studios') bd.append(h('div', { class: 'sdm-mt', text: [pick(REGS, x.reg, lang), pick(FOCUS, x.focus, lang)].filter(Boolean).join(' · ') }));
@@ -305,7 +317,7 @@
       if (line) bd.append(h('div', { class: 'sdm-line', text: line }));
       if (k === 'studios' && x.flags) {
         const fl = h('div', { class: 'sdm-flags' });
-        [...String(x.flags)].slice(0, 4).forEach((f, i) => { if (f === '-') return; fl.append(h('span', { class: 'sdm-flag ' + (f === 'O' ? 'y' : f === '+' ? 'p' : 'n'), text: FLAGN[i][lang === 'ko' ? 0 : 1] + (f === '+' ? ' ' + L.flagP : '') })); });
+        [...String(x.flags)].slice(0, 4).forEach((f, i) => { if (f === '-') return; fl.append(h('span', { class: 'sdm-flag ' + (f === 'O' ? 'y' : f === '+' ? 'p' : 'n'), text: (lang === 'ko' ? FLAGN[i][0] : tr(FLAGN[i][1])) + (f === '+' ? ' ' + L.flagP : '') })); });
         bd.append(fl);
       }
       if (k === 'dresses' && (x.tags || []).length) bd.append(h('div', { class: 'sdm-flags' }, ...x.tags.map((t) => h('span', { class: 'sdm-flag y', text: pick(DTAGS, t, lang) || t }))));
@@ -337,7 +349,7 @@
       const f = h('form', { class: 'sdm-form', id: 'sdm-form' });
       const fld = (label, input, wide) => h('label', { class: 'sdm-lab' + (wide ? ' wide' : '') }, h('span', { text: label }), input);
       const inp = (key, attrs = {}) => { const i = h('input', { class: 'sdm-inp', value: x[key] ?? '', ...attrs }); i.addEventListener('input', () => { x[key] = attrs.inputmode ? num(i.value) : i.value; }); return i; };
-      const sel = (key, opts) => { const s = h('select', { class: 'sdm-inp' }, ...opts.map(([v, a, b]) => h('option', { value: v, text: lang === 'ko' ? a : (b || a) }))); s.value = x[key] ?? ''; s.addEventListener('change', () => { x[key] = s.value; }); return s; };
+      const sel = (key, opts) => { const s = h('select', { class: 'sdm-inp' }, ...opts.map(([v, a, b]) => h('option', { value: v, text: lang === 'ko' ? a : tr(b || a) }))); s.value = x[key] ?? ''; s.addEventListener('change', () => { x[key] = s.value; }); return s; };
       const chk = (key, label) => { const c = h('input', { type: 'checkbox', checked: !!x[key] }); c.addEventListener('change', () => { x[key] = c.checked; }); return h('label', { class: 'sdm-incl' }, c, h('span', { text: label })); };
       f.append(h('h3', { class: 'wide', text: (item ? L.edit : L.add) + ' · ' + L.cat[fk] }));
       f.append(fld(L.fKo, inp('ko', { maxlength: 60, required: true })), fld(L.fEn, inp('en', { maxlength: 60 })));
@@ -348,9 +360,10 @@
         f.append(fld(L.fMood, sel('mood', [['', '—'], ...MOODS])), fld(L.fReg, sel('reg', [['', '—'], ...REGS])), fld(L.fFocus, sel('focus', [['', '—'], ...FOCUS])), chk('total', L.fTotal));
         const flags = [...String(x.flags || '----').padEnd(4, '-')].slice(0, 4);
         f.append(h('div', { class: 'sdm-lab wide' }, h('span', { text: L.fFlags }), h('div', { class: 'sdm-flagedit' }, ...FLAGN.map((fn, i) => {
-          const s = h('select', { class: 'sdm-inp', 'aria-label': fn[lang === 'ko' ? 0 : 1] }, ...L.flagOpt.map(([v, t]) => h('option', { value: v, text: t }))); s.value = flags[i];
+          const fl = lang === 'ko' ? fn[0] : tr(fn[1]);
+          const s = h('select', { class: 'sdm-inp', 'aria-label': fl }, ...L.flagOpt.map(([v, t]) => h('option', { value: v, text: t }))); s.value = flags[i];
           s.addEventListener('change', () => { flags[i] = s.value; x.flags = flags.join(''); });
-          return h('label', {}, h('span', { text: fn[lang === 'ko' ? 0 : 1] }), s);
+          return h('label', {}, h('span', { text: fl }), s);
         }))));
         f.append(fld(L.fNote, inp('note', { maxlength: 20 })));
       }
@@ -358,7 +371,7 @@
         f.append(fld(L.fBlo, inp('blo', { inputmode: 'decimal' })), fld(L.fBhi, inp('bhi', { inputmode: 'decimal' })));
         const tags = new Set(x.tags || []);
         f.append(h('div', { class: 'sdm-lab wide' }, h('span', { text: L.fStyle }), h('div', { class: 'sdm-filters' }, ...DTAGS.map((t) => {
-          const b = h('button', { type: 'button', class: 'chipbtn', 'aria-pressed': String(tags.has(t[0])), text: lang === 'ko' ? t[1] : t[2] });
+          const b = h('button', { type: 'button', class: 'chipbtn', 'aria-pressed': String(tags.has(t[0])), text: lang === 'ko' ? t[1] : tr(t[2]) });
           b.addEventListener('click', () => { tags.has(t[0]) ? tags.delete(t[0]) : tags.add(t[0]); b.setAttribute('aria-pressed', String(tags.has(t[0]))); x.tags = [...tags]; });
           return b;
         }))));

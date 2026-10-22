@@ -25,6 +25,13 @@ One Cloudflare Worker serves the page (`public/`) and the API (`src/worker.js`);
 - Optional var `CONTACT_EMAIL` is shown to couples whose access has ended.
 - Users can delete their account in Settings; a plan whose last member leaves is deleted with its data.
 
+## Languages
+
+Korean and English are built in. Vietnamese, Chinese (Simplified), Thai and Japanese load from `public/i18n/<code>.js`
+only when someone picks them (language menu in the header and on the sign-in screen); anything missing falls back to
+English. `npm run i18n` lists gaps. Text people type themselves is never translated. The privacy policy is Korean and
+English (the Korean version governs).
+
 ## Privacy and security
 
 See `docs/privacy-security-plan.md` (checklist), `docs/internal-management-plan.md` and `docs/incident-response.md`.

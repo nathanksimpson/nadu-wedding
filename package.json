@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
-    "test": "node --experimental-sqlite test/worker.test.mjs && node --experimental-sqlite test/migration.test.mjs",
+    "test": "node --experimental-sqlite test/worker.test.mjs && node --experimental-sqlite test/migration.test.mjs && node scripts/i18n-check.mjs",
     "deploy": "wrangler deploy",
     "deploy:staging": "wrangler deploy --env staging",
     "schema": "wrangler d1 execute nadu-wedding-db --remote --file=./schema.sql",
@@ -12,7 +12,8 @@
     "secret:staging": "wrangler secret put INVITE_CODE --env staging",
     "migrate": "wrangler d1 execute nadu-wedding-db --remote --file=./migrations/0004_security.sql",
     "migrate:staging": "wrangler d1 execute nadu-wedding-staging-db --env staging --remote --file=./migrations/0004_security.sql",
-    "decrypt-backup": "node scripts/decrypt-backup.mjs"
+    "decrypt-backup": "node scripts/decrypt-backup.mjs",
+    "i18n": "node scripts/i18n-check.mjs"
   },
   "devDependencies": {
     "wrangler": "^4.40.0"

@@ -75,8 +75,35 @@
       copied: 'Copied', selected: 'Selected. Press Ctrl/⌘+C to copy', badJson: 'This JSON is not a saved plan.', readFail: 'Could not read the JSON. Check it was copied whole.', loaded: 'Plan loaded', resetDone: 'Reset to starting figures', fileFail: 'Could not read that file.'
     }
   };
-  const T = (k) => (L[S.lang] || L.ko)[k] ?? L.en[k] ?? k;
-  const nm = (o, ko = 'ko', en = 'en') => S.lang === 'en' ? (o[en] || o[ko] || '') : (o[ko] || o[en] || '');
+  // Languages: Korean and English are built in; the others load from /i18n/<code>.js when chosen
+  // (the most common partner nationalities in Korean international marriages). Missing text falls back to English.
+  const LANGS = [['ko', '한국어'], ['en', 'English'], ['vi', 'Tiếng Việt'], ['zh', '中文 (简体)'], ['th', 'ไทย'], ['ja', '日本語']];
+  const LOCALE = { ko: 'ko-KR', en: 'en-CA', vi: 'vi-VN', zh: 'zh-CN', th: 'th-TH', ja: 'ja-JP' };
+  const HTML_LANG = { zh: 'zh-Hans' };
+  const isKo = () => S.lang === 'ko';
+  const locale = () => LOCALE[S.lang] || 'en-CA';
+  // Built-in content (checklist tasks, categories, tips) is stored as Korean/English pairs; other languages
+  // translate the English side through the language file's dictionary.
+  const tx = (en) => { const p = window.NaduI18n && window.NaduI18n[S.lang]; return (p && p.data && p.data[en]) || en; };
+  const T = (k) => (L[S.lang] || L.en)[k] ?? L.en[k] ?? k;
+  const nm = (o, ko = 'ko', en = 'en') => isKo() ? (o[ko] || o[en] || '') : tx(o[en] || o[ko] || '');
+  const deepMerge = (base, over) => { const out = { ...base }; for (const [k, v] of Object.entries(over || {})) out[k] = v && typeof v === 'object' && !Array.isArray(v) && typeof base[k] === 'object' && !Array.isArray(base[k]) ? deepMerge(base[k], v) : v; return out; };
+  const langLoads = {};
+  function ensureLang(lg) {
+    if (lg === 'ko' || lg === 'en' || L[lg]) return Promise.resolve(true);
+    if (!LOCALE[lg]) return Promise.resolve(false);
+    return langLoads[lg] || (langLoads[lg] = new Promise((res) => {
+      const sc = document.createElement('script'); sc.src = '/i18n/' + lg + '.js';
+      sc.onload = () => { const p = window.NaduI18n && window.NaduI18n[lg]; if (p) L[lg] = deepMerge(L.en, p.ui || {}); res(!!p); };
+      sc.onerror = () => { delete langLoads[lg]; res(false); };
+      document.head.append(sc);
+    }));
+  }
+  async function setLang(lg) {
+    if (!(await ensureLang(lg))) lg = 'en';
+    S.lang = lg; savePrefs(); save(); renderAll();
+    if (!$('gate').hidden) showGate(gateMode);
+  }
 
   // ---------- data ----------
   const line = (ko, en, amount) => ({ id: uid(), ko, en, amount });
@@ -114,7 +141,7 @@
   const won = (v) => (v < 0 ? '−₩' : '₩') + comma(Math.abs(v));
   function kr(v) {
     const a = Math.abs(v), s = v < 0 ? '−' : '';
-    if (S.lang === 'en') {
+    if (!isKo()) {
       if (a >= 1e9) return s + '₩' + (a / 1e9).toFixed(2).replace(/\.?0+$/, '') + 'B';
       if (a >= 1e6) return s + '₩' + (a / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M';
       return s + '₩' + comma(a);
@@ -141,7 +168,7 @@
   }
   // edits the current-language field of a bilingual object
   function langInput(id, obj, extra = {}, koKey = 'ko', enKey = 'en') {
-    const k = S.lang === 'en' ? enKey : koKey, other = S.lang === 'en' ? koKey : enKey;
+    const k = isKo() ? koKey : enKey, other = isKo() ? enKey : koKey;
     const i = el('input', { id: id + '-' + S.lang, type: 'text', placeholder: obj[other] || T('itemPh'), ...extra });
     i.value = obj[k] || '';
     i.addEventListener('input', () => { obj[k] = i.value; save(); compute(); });
@@ -255,19 +282,23 @@
 
   // ---------- language ----------
   function applyLang() {
-    document.documentElement.lang = S.lang;
+    document.documentElement.lang = HTML_LANG[S.lang] || S.lang;
     document.querySelectorAll('[data-t]').forEach((e) => { e.textContent = T(e.dataset.t); });
     if (S.skin === 'bright') document.documentElement.setAttribute('data-skin', 'bright'); else document.documentElement.removeAttribute('data-skin');
     $('skin-std').setAttribute('aria-pressed', String(S.skin !== 'bright'));
     $('skin-bright').setAttribute('aria-pressed', String(S.skin === 'bright'));
-    $('lang-ko').setAttribute('aria-pressed', String(S.lang === 'ko'));
-    $('lang-en').setAttribute('aria-pressed', String(S.lang === 'en'));
+    ['lang-select', 'gate-lang'].forEach((id) => { const sel = $(id); if (sel && sel.value !== S.lang) sel.value = S.lang; });
     const head = (id, cols) => { const tr = $(id).querySelector('thead tr'); tr.innerHTML = ''; cols.forEach(([k, l]) => tr.append(el('th', { class: l ? 'l' : '', text: k ? T(k) : '' }))); };
     head('cmp', [['colPick', 1], ['colVenue', 1], ['colStatus', 1], ['colVenueCost'], ['colTotal'], ['colGifts'], ['colNet'], ['colSurplus'], ['colHonsu'], ['colFinal']]);
     head('loan-cmp', [['colUse', 1], ['colProduct', 1], ['colElig', 1], ['colRate'], ['colLimit'], ['colMonthly'], ['col2y'], ['colNotes', 1], ['']]);
   }
   ['std', 'bright'].forEach((k) => $('skin-' + k).addEventListener('click', () => { S.skin = k; save(); applyLang(); compute(); }));
-  ['ko', 'en'].forEach((lg) => $('lang-' + lg).addEventListener('click', () => { S.lang = lg; save(); renderAll(); }));
+  ['lang-select', 'gate-lang'].forEach((id) => {
+    const sel = $(id); if (!sel) return;
+    LANGS.forEach(([code, label]) => sel.append(el('option', { value: code, text: label })));
+    sel.value = S.lang;
+    sel.addEventListener('change', () => setLang(sel.value));
+  });
 
   // ---------- static renders ----------
   function renderBudget() {
@@ -571,7 +602,7 @@
   function buildReport() {
     const M = model(), B = S.budget, t = B.tier, R = $('report'); R.innerHTML = '';
     M.inc = M.venues.filter((x) => repVenue(x.v));
-    const date = new Date().toLocaleDateString(S.lang === 'ko' ? 'ko-KR' : 'en-CA', { year: 'numeric', month: 'long', day: 'numeric' });
+    const date = new Date().toLocaleDateString(locale(), { year: 'numeric', month: 'long', day: 'numeric' });
     R.append(el('div', {}, el('h2', { text: T('repTitle') }), el('div', { class: 'meta', text: `${T('repAsOf')} ${date} · ${T('tierLabel')}: ${T('tiers')[t]} (${comma(B.gifts[t])} × ${n(B.guests)})` })));
     const kv = (pairs) => el('div', { class: 'kv' }, pairs.map(([k, v]) => el('div', {}, el('span', { text: k }), el('span', { text: v }))));
     if (repHas('inputs')) R.append(el('section', {}, el('h3', { text: T('repInputs') }), kv([
@@ -627,7 +658,7 @@
   $('add-venue').addEventListener('click', () => {
     const id = uid();
     S.venues.push({ id, ko: T('newVenue'), en: L.en.newVenue, food: 0, minGuests: 0, capMin: 0, capMax: 0, include: true, notes: '', lines: [line('대관', 'Hall', 0)] });
-    S.venues[S.venues.length - 1][S.lang] = T('newVenue');
+    S.venues[S.venues.length - 1][isKo() ? 'ko' : 'en'] = T('newVenue');
     save(); renderVenues(); compute();
     const i = document.getElementById(`v-${id}-name-${S.lang}`); i?.scrollIntoView({ behavior: 'smooth', block: 'center' }); i?.select();
   });
@@ -768,7 +799,7 @@
     ['jewel', '예물·반지', 'Rings & jewelry'], ['yedan', '예단·폐백', 'Yedan & pyebaek'], ['hanbok', '혼주 한복', "Parents' hanbok"], ['attire', '신랑 예복 (턱시도)', "Groom's tuxedo"],
     ['invite', '청첩장·답례품', 'Invitations & favors'], ['honey', '신혼여행', 'Honeymoon'], ['house', '신혼집 (자기자본)', 'New home (down payment)'], ['home', '혼수·가전', 'Appliances & household'], ['car', '중고차', 'Used car'], ['etc', '기타', 'Other']];
   const PARTIES = [['g', '신랑', 'Groom'], ['b', '신부', 'Bride'], ['gp', '신랑 부모님', "Groom's parents"], ['bp', '신부 부모님', "Bride's parents"]];
-  const pick3 = (arr, k) => { const r = arr.find((x) => x[0] === k); return r ? (S.lang === 'en' ? r[2] : r[1]) : k; };
+  const pick3 = (arr, k) => { const r = arr.find((x) => x[0] === k); return r ? (isKo() ? r[1] : tx(r[2])) : k; };
   const cname = (k) => pick3(BCATS, k), pname = (k) => pick3(PARTIES, k);
 
   Object.assign(L.ko, {
@@ -824,11 +855,18 @@
   const todayNum = () => { const x = new Date(); return Date.UTC(x.getFullYear(), x.getMonth(), x.getDate()) / 864e5; };
   const MON = 'Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec'.split(' ');
   function fmtDay(v) { const d = new Date(v * 864e5), y = d.getUTCFullYear(), m = d.getUTCMonth() + 1, dd = d.getUTCDate(), w = d.getUTCDay();
-    return S.lang === 'ko' ? `${y}.${m}.${dd} (${'일월화수목금토'[w]})` : `${'Sun Mon Tue Wed Thu Fri Sat'.split(' ')[w]}, ${MON[m - 1]} ${dd} ${y}`; }
-  function fmtShort(v) { const d = new Date(v * 864e5); return S.lang === 'ko' ? `${d.getUTCMonth() + 1}.${d.getUTCDate()}` : `${MON[d.getUTCMonth()]} ${d.getUTCDate()}`; }
+    if (S.lang === 'ko') return `${y}.${m}.${dd} (${'일월화수목금토'[w]})`;
+    if (S.lang === 'en') return `${'Sun Mon Tue Wed Thu Fri Sat'.split(' ')[w]}, ${MON[m - 1]} ${dd} ${y}`;
+    return d.toLocaleDateString(locale(), { timeZone: 'UTC', weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' }); }
+  function fmtShort(v) {
+    const d = new Date(v * 864e5);
+    if (S.lang === 'ko') return `${d.getUTCMonth() + 1}.${d.getUTCDate()}`;
+    if (S.lang === 'en') return `${MON[d.getUTCMonth()]} ${d.getUTCDate()}`;
+    return d.toLocaleDateString(locale(), { timeZone: 'UTC', month: 'short', day: 'numeric' });
+  }
   const stageDate = (s) => S.wedding ? dayNum(S.wedding) + s.off : null;
   const stageOf = (id) => STAGES.find((s) => s.id === id);
-  const stageLabel = (s) => S.lang === 'en' && s.labelEn ? s.labelEn : s.label;
+  const stageLabel = (s) => !isKo() && s.labelEn ? tx(s.labelEn) : s.label;
   function allItems() {
     const out = [];
     STAGES.forEach((s) => s.items.forEach((it) => out.push({ ...it, stage: s.id })));
@@ -929,7 +967,7 @@
     else {
       open.slice().sort((x, y) => stageOf(x.stage).off - stageOf(y.stage).off).slice(0, 7).forEach((it) => {
         const s = stageOf(it.stage);
-        up.append(el('li', { class: isLate(it) ? 'late' : '' }, el('span', { class: 't', text: it[S.lang] }), el('span', { class: 'd', text: S.wedding ? fmtShort(stageDate(s)) : stageLabel(s) })));
+        up.append(el('li', { class: isLate(it) ? 'late' : '' }, el('span', { class: 't', text: nm(it) }), el('span', { class: 'd', text: S.wedding ? fmtShort(stageDate(s)) : stageLabel(s) })));
       });
       if (!S.wedding) up.append(el('li', {}, el('span', { class: 'd', text: T('upNoDate') })));
     }
@@ -966,7 +1004,7 @@
       const visible = sItems.filter((i) => listFilter === 'all' || (listFilter === 'open' && !isDone(i.id)) || (listFilter === 'late' && isLate(i)));
       if (!visible.length && listFilter !== 'all') sec.classList.add('nomatch');
       const lateN = sItems.filter(isLate).length;
-      const when = el('div', { class: 'when' }, el('span', { class: 'dlabel', text: stageLabel(s) }), el('span', { class: 'whensub', text: s[S.lang] }));
+      const when = el('div', { class: 'when' }, el('span', { class: 'dlabel', text: stageLabel(s) }), el('span', { class: 'whensub', text: nm(s) }));
       if (sd !== null) when.append(el('span', { class: 'whendate', text: (s.id === 'after' ? '~ ' : '') + fmtDay(sd) }));
       if (now && now.id === s.id) when.append(el('span', { class: 'pill', text: T('now') })); else if (lateN) when.append(el('span', { class: 'pill late', text: T('overdue') + lateN }));
       const cols = el('div', { class: 'cols' });
@@ -977,19 +1015,19 @@
           const done = isDone(it.id);
           const cb = el('input', { type: 'checkbox', class: 'ck', id: 'ck-' + it.id }); cb.checked = done;
           cb.addEventListener('change', () => { S.checks[it.id] = { done: cb.checked, at: new Date().toISOString() }; save(); renderHeader(); renderList(); prepSums(); });
-          const lb = el('label', { for: cb.id }, el('span', { class: 't', text: it[S.lang] }), it.key ? el('span', { class: 'key', text: T('key') }) : null, it.custom ? el('span', { class: 'mine', text: T('mine') }) : null);
+          const lb = el('label', { for: cb.id }, el('span', { class: 't', text: nm(it) }), it.key ? el('span', { class: 'key', text: T('key') }) : null, it.custom ? el('span', { class: 'mine', text: T('mine') }) : null);
           const li = el('li', { class: 'item' + (done ? ' done' : '') + (isLate(it) ? ' late' : '') }, cb, lb);
           if (it.custom) li.append(delBtn('Delete', () => { S.tasks = S.tasks.filter((x) => x.id !== it.id); delete S.checks[it.id]; save(); renderHeader(); renderList(); }));
           ul.append(li);
         });
-        cols.append(el('div', { class: 'col' + (list.length ? '' : ' empty') }, el('h3', { text: LCATS[cat][S.lang] }), ul));
+        cols.append(el('div', { class: 'col' + (list.length ? '' : ' empty') }, el('h3', { text: nm(LCATS[cat]) }), ul));
       });
       const body = el('div', {}, cols);
-      if (s.tip && listFilter === 'all') body.append(el('div', { class: 'stip' }, el('b', { text: T('tipL') }), el('span', { text: s.tip[S.lang === 'ko' ? 0 : 1] })));
+      if (s.tip && listFilter === 'all') body.append(el('div', { class: 'stip' }, el('b', { text: T('tipL') }), el('span', { text: isKo() ? s.tip[0] : tx(s.tip[1]) })));
       sec.append(when, body);
       if (listFilter === 'all') {
         const inp = el('input', { id: 'add-' + s.id, placeholder: T('addph'), maxlength: 80, 'aria-label': T('addph') }); inp.value = keep[inp.id] || '';
-        const sel = el('select', { id: 'addcat-' + s.id, 'aria-label': T('fCat') }, ['a', 'b', 'c'].map((k) => el('option', { value: k, text: LCATS[k][S.lang] })));
+        const sel = el('select', { id: 'addcat-' + s.id, 'aria-label': T('fCat') }, ['a', 'b', 'c'].map((k) => el('option', { value: k, text: nm(LCATS[k]) })));
         const ad = el('form', { class: 'adder' }, inp, sel, el('button', { type: 'submit', text: T('add') }));
         ad.addEventListener('submit', (e) => { e.preventDefault(); const v = inp.value.trim(); if (!v) return; inp.value = ''; S.tasks.push({ id: 'c' + uid(), stage: s.id, cat: sel.value, text: v }); save(); renderHeader(); renderList(); $('add-' + s.id)?.focus(); });
         sec.append(ad);
@@ -1187,7 +1225,7 @@
   function renderSdm() {
     const line = (S.nonVenue || []).find((x) => x.ko === '스드메');
     window.NaduSdm.render($('sdm-root'), {
-      lang: S.lang, writable: !!(Sync.plan && Sync.plan.writable),
+      lang: S.lang, tx, writable: !!(Sync.plan && Sync.plan.writable),
       catalog: S.sdmCatalog, picks: S.sdm, budgetFallback: line ? n(line.amount) : 0,
       setPicks: (p) => { S.sdm = p; save(); renderSdm(); },
       setCatalog: (c) => { S.sdmCatalog = c; save(); renderSdm(); },
@@ -1550,7 +1588,7 @@
     privacyText: 'Nadu Wedding Planner stores your wedding planning data (budget, guests, gift money, checklist and so on) and account details (email, name, encrypted password) on Cloudflare’s servers. It is used only to run the service and answer support requests — never for advertising or shared with third parties. Only members of a plan can see that plan’s data. You can export your data at any time, and deleting your account in Settings deletes the related data.'
   });
   const ENV = { env: 'production', turnstileSiteKey: null, contact: null, trialDays: 14 };
-  const fmtDate = (ms) => new Date(ms).toLocaleDateString(S.lang === 'ko' ? 'ko-KR' : 'en-CA', { year: 'numeric', month: 'short', day: 'numeric' });
+  const fmtDate = (ms) => new Date(ms).toLocaleDateString(locale(), { year: 'numeric', month: 'short', day: 'numeric' });
   const daysLeft = (ms) => Math.max(0, Math.ceil((ms - Date.now()) / 864e5));
   function accessLabel(p) {
     if (!p) return '';
@@ -1582,7 +1620,7 @@
     $('g-pass').autocomplete = gateMode === 'signup' ? 'new-password' : 'current-password';
     $('gate-err').textContent = ''; $('gate-msg').textContent = '';
     $('ob-trial').textContent = T('obTrial')(ENV.trialDays);
-    document.querySelectorAll('#gate [data-lang]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.lang === S.lang)));
+    if ($('gate-lang')) $('gate-lang').value = S.lang;
     $('ob-logout').hidden = gateMode !== 'onboard' || !!Sync.planId;
     if (['signup', 'login', 'forgot'].includes(gateMode)) mountTurnstile();
     if (gateMode !== 'login') { $('g-code-wrap').hidden = true; $('g-code').value = ''; }
@@ -1597,7 +1635,6 @@
     s.onload = () => { turnstileWidget = window.turnstile.render('#g-turnstile', { sitekey: ENV.turnstileSiteKey }); };
     document.head.append(s); turnstileWidget = 'loading';
   }
-  document.querySelectorAll('#gate [data-lang]').forEach((b) => b.addEventListener('click', () => { S.lang = b.dataset.lang; savePrefs(); renderAll(); showGate(gateMode); }));
   $('ob-logout').addEventListener('click', () => $('btn-logout').click());
   document.querySelectorAll('[data-goto]').forEach((b) => b.addEventListener('click', () => showGate(b.dataset.goto)));
   $('gate-form').addEventListener('submit', async (e) => {
@@ -1908,7 +1945,9 @@
     $('env-banner').hidden = false;
   }
   async function boot() {
-    loadPrefs(); ensureShape(); renderAll();
+    loadPrefs();
+    if (!(await ensureLang(S.lang))) S.lang = 'en';
+    ensureShape(); renderAll();
     const q = new URLSearchParams(location.search);
     if (q.get('join')) { try { sessionStorage.setItem('nadu-join', q.get('join')); } catch (e) {} history.replaceState(null, '', location.pathname); }
     const er = await api('/env'); if (er.ok) Object.assign(ENV, er.data);
@@ -1942,7 +1981,7 @@
       });
       const d = new Date(h.at);
       tb.append(el('tr', {},
-        el('td', { class: 'l mono', text: d.toLocaleString(S.lang === 'ko' ? 'ko-KR' : 'en-CA', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }), title: h.at }),
+        el('td', { class: 'l mono', text: d.toLocaleString(locale(), { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }), title: h.at }),
         el('td', { class: 'l', text: Sync.users[h.user_id] || '—' }),
         el('td', { class: 'l vname', text: T('keyLabels')[h.key] || h.key }),
         el('td', { class: 'l' }, el('span', { class: 'chip ' + (h.action === 'restore' ? 'plan' : h.action === 'import' ? 'rose' : ''), text: T({ edit: 'aEdit', restore: 'aRestore', import: 'aImport' }[h.action] || 'aEdit') })),
@@ -2086,7 +2125,7 @@
     const rows = au.ok ? au.data.rows : [];
     if (!rows.length) tb.append(el('tr', {}, el('td', { class: 'empty-row', colspan: 5, text: T('auEmpty') })));
     rows.slice(0, 200).forEach((x) => tb.append(el('tr', {},
-      el('td', { class: 'l', text: new Date(x.at).toLocaleString(S.lang === 'ko' ? 'ko-KR' : 'en-GB') }), el('td', { class: 'l', text: x.email || (x.user_id ? '#' + x.user_id : '—') }),
+      el('td', { class: 'l', text: new Date(x.at).toLocaleString(locale()) }), el('td', { class: 'l', text: x.email || (x.user_id ? '#' + x.user_id : '—') }),
       el('td', { class: 'l mono', text: x.ip || '' }), el('td', { class: 'l' + (hl.has(x.action) ? ' hl' : ''), text: x.action + (x.plan_id ? ` · #${x.plan_id}` : '') }),
       el('td', { class: 'l', text: [x.target, x.detail].filter(Boolean).join(' · ') }))));
     tbl.append(tb);
