@@ -2496,6 +2496,7 @@ body.gated .wrap { visibility: hidden; }
   const csv = (head, rows) => '﻿' + [head, ...rows].map((r) => r.map(csvCell).join(',')).join('\r\n'); // BOM so Excel reads Korean
   const stamp = () => new Date().toISOString().slice(0, 10);
   const EXPORTS = {
+    backup: () => { location.href = '/api/admin/backup'; },
     json: () => { location.href = '/api/export?plan=' + Sync.planId; },
     exp: () => download(`expenses-${stamp()}.csv`, csv([T('fCat'), T('fItem'), T('fAmt'), T('fStatus'), T('fPaidBy'), T('fMemo')],
       S.expenses.map((x) => [cname(x.cat), x.name, n(x.amount), x.status === 'paid' ? T('expPaid') : T('expPlanned'), pname(x.paidBy), x.memo || ''])), 'text/csv'),
@@ -2514,7 +2515,8 @@ body.gated .wrap { visibility: hidden; }
   };
   function renderExportButtons() {
     const box = $('export-btns'); if (!box) return; box.innerHTML = '';
-    [['backup', 'exBackup'], ['json', 'exJson'], ['exp', 'exExp'], ['guests', 'exGuests'], ['gifts', 'exGifts'], ['vendors', 'exVendors'], ['hist', 'exHist']].forEach(([k, lab]) => {
+    [['backup', 'exBackup'], ['json', 'exJson'], ['exp', 'exExp'], ['guests', 'exGuests'], ['gifts', 'exGifts'], ['vendors', 'exVendors'], ['hist', 'exHist']]
+      .filter(([k]) => k !== 'backup' || (Sync.me && Sync.me.is_admin)).forEach(([k, lab]) => {
       const b = el('button', { type: 'button', text: T(lab) }); b.addEventListener('click', EXPORTS[k]); box.append(b);
     });
   }
