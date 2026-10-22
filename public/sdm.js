@@ -34,7 +34,7 @@
       all: '전체', fMood: '무드', fTier: '가격', fReg: '지역', fStyle: '스타일', fShort: '후보만', fPop: '인기샵만', sort: '정렬', sortPrice: '가격 낮은 순', sortName: '이름 순',
       use: '조합에 넣기', inUse: '조합에 있음', shortAdd: '후보 담기', shortDel: '후보 빼기', pkg: '토탈', pkgLong: '토탈 (드레스·헤메 포함)', ask: '가격 상담', both: '촬영+본식', bon: '본식만', pop: '인기샵', artist: '유명 선생님',
       flagP: '추가금', noPhoto: '사진 없음', man: '만',
-      add: '업체 추가', edit: '수정', del: '삭제', delSure: '정말 삭제?', save: '저장', cancel: '취소', photo: '사진', photoPick: '사진 고르기', photoDel: '사진 빼기', uploading: '사진 올리는 중…', upFail: '사진을 올리지 못했어요',
+      add: '업체 추가', edit: '수정', del: '삭제', delSure: '정말 삭제?', save: '저장', cancel: '취소', photo: '사진', photoPick: '사진 고르기', dzPhoto: '사진을 끌어다 놓거나 눌러서 고르세요', dzPhotoHint: 'JPG · PNG · WebP, 큰 사진은 자동으로 줄여요', dzPhotoBad: 'JPG, PNG, WebP 사진만 올릴 수 있어요', photoDel: '사진 빼기', uploading: '사진 올리는 중…', upFail: '사진을 올리지 못했어요',
       fKo: '이름 (한국어)', fEn: '이름 (영어)', fLo: '최저가 (만원)', fHi: '최고가 (만원)', fBlo: '본식만 최저 (만원)', fBhi: '본식만 최고 (만원)', fLabel: '가격 표기', fArtist: '대표 선생님', fLink: '링크', fLinkLabel: '링크 이름', fLineKo: '한 줄 소개 (한국어)', fLineEn: '한 줄 소개 (영어)', fNote: '짧은 메모', fTotal: '토탈 상품 (드레스·헤메 포함)', fFocus: '촬영 스타일', fPopular: '인기샵', fFlags: '촬영 가능',
       flagOpt: [['-', '모름'], ['O', '가능'], ['+', '추가금'], ['X', '없음']], needName: '이름을 적어주세요',
       emptyTitle: '아직 업체 목록이 없어요', emptyHelp: '‘업체 추가’로 직접 넣거나, 업체 목록 파일이 있다면 내보내기·가져오기 메뉴의 ‘파일 열기’로 불러오세요.',
@@ -51,7 +51,7 @@
       all: 'All', fMood: 'Look', fTier: 'Price', fReg: 'Area', fStyle: 'Style', fShort: 'Shortlist only', fPop: 'Popular only', sort: 'Sort', sortPrice: 'Lowest price', sortName: 'Name',
       use: 'Use in combo', inUse: 'In combo', shortAdd: 'Shortlist', shortDel: 'Unshortlist', pkg: 'Package', pkgLong: 'Package (dress & makeup included)', ask: 'Price on request', both: 'Shoot + ceremony', bon: 'Ceremony only', pop: 'Popular', artist: 'Known artist',
       flagP: 'extra fee', noPhoto: 'No photo', man: '',
-      add: 'Add a listing', edit: 'Edit', del: 'Delete', delSure: 'Delete it?', save: 'Save', cancel: 'Cancel', photo: 'Photo', photoPick: 'Choose photo', photoDel: 'Remove photo', uploading: 'Uploading photo…', upFail: 'Couldn’t upload the photo',
+      add: 'Add a listing', edit: 'Edit', del: 'Delete', delSure: 'Delete it?', save: 'Save', cancel: 'Cancel', photo: 'Photo', photoPick: 'Choose photo', dzPhoto: 'Drop a photo here, or click to choose one', dzPhotoHint: 'JPG · PNG · WebP, large photos are resized', dzPhotoBad: 'Only JPG, PNG or WebP photos', photoDel: 'Remove photo', uploading: 'Uploading photo…', upFail: 'Couldn’t upload the photo',
       fKo: 'Name (Korean)', fEn: 'Name (English)', fLo: 'Lowest price (₩10k)', fHi: 'Highest price (₩10k)', fBlo: 'Ceremony only, lowest (₩10k)', fBhi: 'Ceremony only, highest (₩10k)', fLabel: 'Price as listed', fArtist: 'Known artist', fLink: 'Link', fLinkLabel: 'Link label', fLineKo: 'One-line note (Korean)', fLineEn: 'One-line note (English)', fNote: 'Short tag', fTotal: 'Package (dress & makeup included)', fFocus: 'Shooting style', fPopular: 'Popular', fFlags: 'Available scenes',
       flagOpt: [['-', 'Unknown'], ['O', 'Yes'], ['+', 'Extra fee'], ['X', 'No']], needName: 'Add a name',
       emptyTitle: 'No listings yet', emptyHelp: 'Add shops with “Add a listing”, or if you have a listings file, open it with “Open file” in the export/import menu.',
@@ -381,10 +381,12 @@
           const ok = await ctx.uploadFile(name, blob);
           busy = '';
           if (!ok) { ctx.toast(L.upFail); return; }
-          x.photo = name; showPrev();
+          x.photo = name; showPrev(); file.value = '';
         });
-        f.append(h('div', { class: 'sdm-lab wide' }, h('span', { text: L.photo }), h('div', { class: 'sdm-photorow' }, prev, file,
-          h('button', { type: 'button', class: 'sdm-del', text: L.photoDel, onclick: () => { x.photo = ''; showPrev(); } }))));
+        const row = h('div', { class: 'sdm-photorow' }, prev, file,
+          h('button', { type: 'button', class: 'sdm-del', text: L.photoDel, onclick: () => { x.photo = ''; showPrev(); } }));
+        f.append(h('div', { class: 'sdm-lab wide' }, h('span', { text: L.photo }), row));
+        if (window.NaduDrop) window.NaduDrop(file, { text: L.dzPhoto, hint: L.dzPhotoHint, icon: '🖼', onReject: () => ctx.toast(L.dzPhotoBad) });
       }
       const delB = item ? h('button', { type: 'button', class: 'sdm-del', text: L.del }) : null;
       if (delB) delB.addEventListener('click', () => {
@@ -514,6 +516,7 @@
 .sdm-flagedit{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
 .sdm-flagedit label{display:flex;flex-direction:column;gap:2px}
 .sdm-photorow{display:flex;gap:12px;align-items:center;flex-wrap:wrap}
+.sdm-photorow .dz{flex:1 1 240px}
 .sdm-formphoto img,.sdm-formphoto .sdm-ph{width:64px;height:80px;object-fit:cover;border-radius:8px}
 .sdm-file{font-size:12.5px;max-width:100%}
 .sdm-formacts{display:flex;gap:8px;flex-wrap:wrap;align-items:center}

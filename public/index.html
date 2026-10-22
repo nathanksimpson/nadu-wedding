@@ -419,8 +419,8 @@ body.gated .wrap { visibility: hidden; }
     <div class="row-btns">
       <button id="io-copy" type="button" data-t="copy"></button>
       <button id="io-load" type="button" class="primary" data-t="load"></button>
-      <label class="small" for="io-file"><span data-t="openFile"></span> <input id="io-file" type="file" accept=".json,application/json" style="width:auto"></label>
     </div>
+    <input id="io-file" type="file" accept=".json,application/json">
   </section>
 
   <div class="tabpanel app" data-panel="dash">
@@ -650,6 +650,7 @@ body.gated .wrap { visibility: hidden; }
 <div class="tip" id="tip"></div>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+<script src="/dropzone.js"></script>
 <script src="/sdm.js"></script>
 <script>
 (function () {
@@ -663,7 +664,7 @@ body.gated .wrap { visibility: hidden; }
       title: '결혼·신혼집 예산 플래너', lede: '숫자를 고치면 모든 옵션이 보유 현금 기준으로 다시 계산됩니다. 변경 내용은 이 브라우저에만 저장됩니다. 초기값은 현재 견적과 추정치입니다.',
       report: '인쇄용 보고서', skinStd: '기본', skinBright: '밝게', repOptVenues: '포함할 옵션', repOptSections: '포함할 항목', io: '가져오기·내보내기', reset: '초기화', resetConfirm: '정말 초기화?',
       ioTitle: '데이터 가져오기·내보내기', ioHelp: '이 JSON을 복사해 백업하거나 다른 브라우저로 옮기세요. 저장해 둔 계획을 붙여넣고 불러오기를 누르면 현재 계획을 대체합니다.',
-      copy: '복사', load: '붙여넣은 계획 불러오기', openFile: '또는 .json 파일 열기:',
+      copy: '복사', load: '붙여넣은 계획 불러오기', openFile: '또는 .json 파일 열기:', dzJson: '.json 파일을 여기로 끌어다 놓거나 눌러서 고르세요', dzJsonHint: '내보낸 계획 파일이나 업체 목록 파일',
       secInputs: '예산 기준', krw: '모든 금액 단위: 원', tierLabel: '비교에 쓸 축의금 시나리오',
       cash: '보유 현금 (총예산)', deposit: '전세 보증금', loan: '대출 희망액', down: '자기자금', guests: '예상 하객 수',
       g0: '축의금/인 · 보수', g1: '축의금/인 · 현실', g2: '축의금/인 · 높음', brokerRate: '중개보수율 (%)', vat: '중개보수에 부가세 10% 포함',
@@ -697,7 +698,7 @@ body.gated .wrap { visibility: hidden; }
       title: 'Wedding & home budget planner', lede: 'Edit any figure and every option re-scores against your cash. Changes save in this browser only. Starting figures are your current quotes and estimates.',
       report: 'Printable report', skinStd: 'Standard', skinBright: 'Bright', repOptVenues: 'Options to include', repOptSections: 'Sections to include', io: 'Import / export', reset: 'Reset', resetConfirm: 'Confirm reset',
       ioTitle: 'Import / export', ioHelp: 'Copy this JSON to back up your plan or move it to another browser. Paste a saved plan and press Load to replace the current one.',
-      copy: 'Copy', load: 'Load pasted plan', openFile: 'or open a .json file:',
+      copy: 'Copy', load: 'Load pasted plan', openFile: 'or open a .json file:', dzJson: 'Drop a .json file here, or click to choose one', dzJsonHint: 'An exported plan or a listings file',
       secInputs: 'Budget inputs', krw: 'All amounts in KRW (원)', tierLabel: 'Gift scenario used for comparison',
       cash: 'Total cash budget', deposit: 'Jeonse deposit', loan: 'Loan amount', down: 'Cash down payment', guests: 'Expected guests',
       g0: 'Gift per guest · low', g1: 'Gift per guest · realistic', g2: 'Gift per guest · high', brokerRate: 'Brokerage rate (%)', vat: 'Add 10% VAT to brokerage',
@@ -1315,7 +1316,8 @@ body.gated .wrap { visibility: hidden; }
   }
   function load(obj) { const files = obj && obj.files; if (obj && obj.app === 'nadu-wedding' && obj.data) obj = Object.assign({}, S, obj.data); if (files && Sync.plan && Sync.plan.writable) loadFiles(files); if (!valid(obj)) { toast(T('badJson')); return; } const keepPrefs = {}; PREFS.forEach((k) => { keepPrefs[k] = S[k]; }); S = Object.assign(obj, keepPrefs); Sync.importing = true; ensureShape(); save(); renderAll(); toast(T('loaded')); }
   $('io-load').addEventListener('click', () => { try { load(JSON.parse($('io-text').value)); } catch (e) { toast(T('readFail')); } });
-  $('io-file').addEventListener('change', (e) => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => { try { load(JSON.parse(r.result)); } catch (er) { toast(T('fileFail')); } }; r.readAsText(f); });
+  window.NaduDrop($('io-file'), { textKey: 'dzJson', hintKey: 'dzJsonHint', icon: '⇪' });
+  $('io-file').addEventListener('change', (e) => { const f = e.target.files[0]; if (!f) return; const r = new FileReader(); r.onload = () => { try { load(JSON.parse(r.result)); } catch (er) { toast(T('fileFail')); } }; r.readAsText(f); e.target.value = ''; });
   const rb = $('btn-reset');
   rb.addEventListener('click', () => {
     if (rb.dataset.arm) { const keep = {}; PREP_KEYS.concat(['lang']).forEach((k) => { keep[k] = S[k]; }); S = DEFAULTS(); Object.assign(S, keep); save(); renderAll(); toast(T('resetDone')); delete rb.dataset.arm; return; }
