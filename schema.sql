@@ -9,14 +9,19 @@ CREATE TABLE IF NOT EXISTS users (
   pw_salt TEXT NOT NULL,
   created_at TEXT NOT NULL,
   email TEXT,
-  is_admin INTEGER NOT NULL DEFAULT 0
+  is_admin INTEGER NOT NULL DEFAULT 0,
+  totp_secret TEXT,                -- two-step login secret, encrypted when DATA_KEY is set
+  totp_pending TEXT,
+  totp_enabled INTEGER NOT NULL DEFAULT 0
 );
 CREATE UNIQUE INDEX IF NOT EXISTS users_email ON users(email COLLATE NOCASE) WHERE email IS NOT NULL;
 
 CREATE TABLE IF NOT EXISTS sessions (
   token TEXT PRIMARY KEY,
   user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  expires_at INTEGER NOT NULL
+  expires_at INTEGER NOT NULL,
+  mfa INTEGER NOT NULL DEFAULT 0,  -- signed in with a two-step code
+  last_seen INTEGER                -- admin idle timeout
 );
 CREATE INDEX IF NOT EXISTS sessions_user ON sessions(user_id);
 
@@ -31,6 +36,8 @@ CREATE TABLE IF NOT EXISTS plans (
   trial_ends INTEGER,
   paid_until INTEGER,
   ai_enabled INTEGER NOT NULL DEFAULT 0,
+  io_enabled INTEGER NOT NULL DEFAULT 0, -- paid export/import add-on
+  warned_at INTEGER,                     -- retention warning sent
   admin_note TEXT NOT NULL DEFAULT '',
   created_by INTEGER,
   created_at TEXT NOT NULL
@@ -111,3 +118,19 @@ CREATE TABLE IF NOT EXISTS rate_events (
   at INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS rate_events_bucket ON rate_events(bucket, at);
+
+-- 접속기록 (access log): HMAC-signed rows, kept 1 year (permission changes 3 years).
+CREATE TABLE IF NOT EXISTS audit_log (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  at INTEGER NOT NULL,
+  user_id INTEGER,
+  ip TEXT,
+  plan_id INTEGER,
+  action TEXT NOT NULL,
+  target TEXT,
+  detail TEXT,
+  keep_until INTEGER NOT NULL,
+  mac TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS audit_log_at ON audit_log(at);
+CREATE INDEX IF NOT EXISTS audit_log_user ON audit_log(user_id, at);

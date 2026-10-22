@@ -6,21 +6,39 @@
   "assets": {
     "directory": "./public/",
     "binding": "ASSETS",
-    "run_worker_first": ["/api/*"]
+    // Every request goes through the Worker first: bot blocking, robots.txt and security headers cover pages too.
+    "run_worker_first": true
   },
   "d1_databases": [
     { "binding": "DB", "database_name": "nadu-wedding-db", "database_id": "1a54d78d-0198-4d95-92da-e4d4e154649c" }
   ],
-  "vars": { "APP_ENV": "production", "TRIAL_DAYS": "14" },
+  // Secrets (set with `npx wrangler secret put NAME`, never in this file):
+  //   DATA_KEY       encryption key, "<id>:<base64 32 bytes>"  (see README → Encryption)
+  //   DATA_KEY_PREV  previous key while rotating
+  //   TURNSTILE_SECRET, RESEND_API_KEY, MAIL_FROM
+  // Plain settings that can be set in the dashboard instead of here: PRIVACY_OFFICER, PRIVACY_EMAIL, CONTACT_EMAIL, TURNSTILE_SITEKEY
+  "vars": { "APP_ENV": "production", "TRIAL_DAYS": "14", "SIGNUP_OPEN": "true" },
+  // Read limits per account / per IP (requests per minute).
+  "ratelimits": [
+    { "name": "READ_LIMITER", "namespace_id": "4101", "simple": { "limit": 180, "period": 60 } },
+    { "name": "FILE_LIMITER", "namespace_id": "4102", "simple": { "limit": 900, "period": 60 } }
+  ],
+  // Daily housekeeping at 03:17 KST: retention warnings and deletions, log and session cleanup.
+  "triggers": { "crons": ["17 18 * * *"] },
   "observability": { "enabled": true },
-  // Test copy: its own Worker (nadu-wedding-staging) and its own empty database.
-  // Deploy with `npm run deploy:staging`, or push to the `staging` branch.
+  // Test copy: its own Worker (nadu-wedding-staging) and its own database.
+  // Deploy with `npm run deploy:staging`, or push to the `staging` branch. New sign-ups are closed on staging.
   "env": {
     "staging": {
       "d1_databases": [
         { "binding": "DB", "database_name": "nadu-wedding-staging-db", "database_id": "d7b83cb3-f838-4281-abbc-d01651bee1f7" }
       ],
-      "vars": { "APP_ENV": "staging", "TRIAL_DAYS": "14" }
+      "vars": { "APP_ENV": "staging", "TRIAL_DAYS": "14", "SIGNUP_OPEN": "false" },
+      "ratelimits": [
+        { "name": "READ_LIMITER", "namespace_id": "4201", "simple": { "limit": 180, "period": 60 } },
+        { "name": "FILE_LIMITER", "namespace_id": "4202", "simple": { "limit": 900, "period": 60 } }
+      ],
+      "triggers": { "crons": ["17 18 * * *"] }
     }
   }
 }

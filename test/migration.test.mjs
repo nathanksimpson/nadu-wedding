@@ -10,14 +10,18 @@ db.prepare("INSERT INTO users (username, display, pw_hash, pw_salt, created_at) 
 db.prepare("INSERT INTO docs VALUES ('budget', '{\"cash\":1}', 3, 1, '2026-10-19T10:00:00Z', 'w1')").run();
 db.prepare("INSERT INTO history (key, version, value, user_id, at, action) VALUES ('budget', 3, '{\"cash\":1}', 1, '2026-10-19T10:00:00Z', 'edit')").run();
 db.exec(read('../migrations/0002_plans.sql'));
+db.exec(read('../migrations/0003_files.sql'));
+db.prepare("UPDATE plans SET status = 'active'").run();
+db.prepare("INSERT INTO plans (name, status, created_at) VALUES ('hand-expired', 'expired', '2026-01-01')").run();
+db.exec(read('../migrations/0004_security.sql'));
 
 const stmt = (sql) => ({ args: [], bind(...a) { this.args = a; return this; },
   first() { return Promise.resolve(db.prepare(sql).get(...this.args) ?? null); },
   all() { return Promise.resolve({ results: db.prepare(sql).all(...this.args) }); },
   run() { const r = db.prepare(sql).run(...this.args); return Promise.resolve({ meta: { changes: Number(r.changes), last_row_id: Number(r.lastInsertRowid) } }); } });
 const env = { ASSETS: { fetch: () => new Response('') }, DB: { prepare: stmt, batch: async (l) => { const o = []; for (const s of l) o.push(await s.run()); return o; } } };
-db.prepare("INSERT INTO sessions VALUES ('t', 1, ?)").run(Date.now() + 1e7);
-const get = async (p) => (await worker.fetch(new Request('https://x' + p, { headers: { cookie: 'sid=t', 'x-plan-id': '1' } }), env)).json();
+db.prepare("INSERT INTO sessions (token, user_id, expires_at) VALUES ('t', 1, ?)").run(Date.now() + 1e7);
+const get = async (p) => (await worker.fetch(new Request('https://x' + p, { headers: { cookie: 'sid=t', 'x-plan-id': '1', 'user-agent': 'Mozilla/5.0 (test)' } }), env)).json();
 
 let failed = 0; const ok = (c, m) => { console.log(c ? 'ok' : 'FAIL', m); if (!c) failed++; };
 const me = await get('/api/me');
@@ -25,6 +29,10 @@ ok(me.user.is_admin && me.plans.length === 1 && me.plans[0].role === 'owner' && 
 const st = await get('/api/state');
 ok(st.docs.budget.value.cash === 1 && st.docs.budget.version === 3 && st.seq === 1, 'sections, versions and history carried over');
 ok(db.prepare('SELECT COUNT(*) AS n FROM docs').get().n === 1, 'old tables left untouched');
+ok(db.prepare("SELECT paid_until FROM plans WHERE name = 'hand-expired'").get().paid_until > 0, '0004 gives hand-expired plans an end date for retention');
+ok(db.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE name = 'audit_log'").get().n === 1 && me.user.two_step === false, '0004 adds the audit log and two-step columns');
+db.exec(read('../migrations/0005_drop_legacy.sql'));
+ok(db.prepare("SELECT COUNT(*) AS n FROM sqlite_master WHERE name IN ('docs', 'history')").get().n === 0 && (await get('/api/state')).docs.budget.value.cash === 1, '0005 drops the old copies; plan 1 still intact');
 const fresh = new DatabaseSync(':memory:'); fresh.exec(read('../migrations/0001_initial.sql')); fresh.exec(read('../migrations/0002_plans.sql'));
 ok(fresh.prepare('SELECT COUNT(*) AS n FROM plans').get().n === 0, 'empty database: no placeholder plan created');
 if (failed) process.exit(1);

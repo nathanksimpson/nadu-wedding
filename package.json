@@ -10,8 +10,9 @@
     "schema": "wrangler d1 execute nadu-wedding-db --remote --file=./schema.sql",
     "schema:staging": "wrangler d1 execute nadu-wedding-staging-db --env staging --remote --file=./schema.sql",
     "secret:staging": "wrangler secret put INVITE_CODE --env staging",
-    "migrate": "wrangler d1 execute nadu-wedding-db --remote --file=./migrations/0002_plans.sql && wrangler d1 execute nadu-wedding-db --remote --file=./migrations/0003_files.sql",
-    "migrate:staging": "wrangler d1 execute nadu-wedding-staging-db --env staging --remote --file=./migrations/0002_plans.sql && wrangler d1 execute nadu-wedding-staging-db --remote --env staging --file=./migrations/0003_files.sql"
+    "migrate": "wrangler d1 execute nadu-wedding-db --remote --file=./migrations/0004_security.sql",
+    "migrate:staging": "wrangler d1 execute nadu-wedding-staging-db --env staging --remote --file=./migrations/0004_security.sql",
+    "decrypt-backup": "node scripts/decrypt-backup.mjs"
   },
   "devDependencies": {
     "wrangler": "^4.40.0"

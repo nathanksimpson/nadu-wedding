@@ -9,9 +9,13 @@ See README.md for architecture, environments, release and backup steps.
   Never show a bare `<input type="file">`. Set `accept` on the input; the drop area refuses other types.
   Keep the input's normal `change` handler — a drop fills the input and fires `change`, so no separate drop code is needed.
   Clear `input.value` after handling so the same file can be picked again.
-- Every user-facing string exists in Korean and English (`L.ko` / `L.en` in index.html, `STR` in sdm.js).
+- Every user-facing string exists in Korean and English (`L.ko` / `L.en` in public/app.js, `STR` in sdm.js).
 - Listings and choices are the plan's own data (synced sections), never hard-coded defaults; the repo is public.
 - Layouts must work at phone width (390px) with no horizontal scroll.
+- No inline scripts or inline event handlers (strict Content-Security-Policy): page code goes in `public/*.js`.
+- Export is always free for plan members (Korean privacy law); only import and AI are paid add-ons.
+- Personal data stays encrypted at rest (`sealText`/`openText` in `src/security.js`) — new stored fields too.
+- Log new data downloads and admin/permission actions with `audit()`; never store ID numbers.
 
 ## Rules
 

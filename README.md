@@ -13,14 +13,46 @@ One Cloudflare Worker serves the page (`public/`) and the API (`src/worker.js`);
 - Every data request names its plan (`X-Plan-Id`) and is checked against membership on the server;
   the tests include attempts to read, write, export or restore across plans.
 - **Access:** new plans get a free trial (`TRIAL_DAYS`, default 14). After that the plan is read-only
-  (viewing and export still work) until an admin records a payment in the **Admin** tab
-  (+30 days / +1 year). **AI features** are a separate paid switch per plan; admins always have them.
-- **Admin:** the first account on an empty site, or the original owner after migration.
+  until an admin records a payment in the **Admin** tab (+30 days / +1 year).
+- **Export is always free** for every member (JSON and CSV), whatever the plan's status: people have the right to
+  their own data (개인정보보호법 제35조). **Paid add-ons** per plan, switched on in the Admin tab: **AI features** and
+  **Import** (loading a file into a plan). Admins always have both.
+- **Admin:** the first account on an empty site, or the original owner after migration. The Admin tab needs
+  **two-step sign-in** (Settings → 두 단계 인증, any authenticator app); admin sessions end after 30 minutes idle.
 - **Password reset** by email via [Resend](https://resend.com): set secrets `RESEND_API_KEY` and
   `MAIL_FROM` (e.g. `Nadu Wedding Planner <noreply@yourdomain>`). Without them, the admin can create a
   reset link in the Admin tab and pass it on.
 - Optional var `CONTACT_EMAIL` is shown to couples whose access has ended.
 - Users can delete their account in Settings; a plan whose last member leaves is deleted with its data.
+
+## Privacy and security
+
+See `docs/privacy-security-plan.md` (checklist), `docs/internal-management-plan.md` and `docs/incident-response.md`.
+
+- **Privacy policy** at `/privacy.html` (Korean and English). It shows as a draft until a Korean lawyer has reviewed it;
+  then set `DRAFT = false` and the effective date in `public/privacy.js`.
+- **Settings** (Worker variables or secrets; keep personal contacts out of this public repo):
+  `PRIVACY_OFFICER`, `PRIVACY_EMAIL` (shown in the policy), `CONTACT_EMAIL`, `TURNSTILE_SITEKEY` + `TURNSTILE_SECRET`,
+  `RESEND_API_KEY` + `MAIL_FROM` (password reset and retention warnings), `SIGNUP_OPEN` (`false` on staging).
+- **Encryption at rest:** plan sections, history, photos and two-step keys are AES-256-GCM encrypted when the
+  `DATA_KEY` secret is set. Create and set it once per environment (keep a copy in a password manager — without it the
+  data can't be read):
+  ```bash
+  node -e "console.log('k1:'+require('crypto').randomBytes(32).toString('base64'))"   # copy the output
+  npx wrangler secret put DATA_KEY --env staging    # paste it; for live: npx wrangler secret put DATA_KEY
+  ```
+  Then Admin → Security & privacy → **Encrypt now** encrypts the existing rows.
+  **Rotating the key:** set the old value as `DATA_KEY_PREV`, a new `k2:…` value as `DATA_KEY`, press *Encrypt now*
+  until nothing is left, then delete `DATA_KEY_PREV`.
+- **Access log** (Admin tab): sign-ins, exports, imports, backups, membership and admin actions; HMAC-signed,
+  kept 1 year (permission changes 3 years). Review monthly; *Check for tampering* verifies it.
+- **Retention:** a daily job (03:17 KST) deletes plans 1 year after they expired, after a warning email 30 days before
+  (no email set up → nothing is deleted). It also trims the access log and old sessions.
+- **Bots:** `robots.txt` and `noai` headers, AI/scraper user agents get 403, read rate limits per account and IP
+  (`READ_LIMITER` / `FILE_LIMITER` bindings), Turnstile on sign-up, sign-in and reset when configured.
+- **Headers:** strict Content-Security-Policy (no inline scripts — page code lives in `public/app.js`), HSTS,
+  no framing, no-referrer leaks.
+- **ID numbers:** saving a resident/foreigner registration number is refused; card numbers get a warning.
 
 ## Environments
 
@@ -42,27 +74,35 @@ npm run migrate:staging   # staging database
 npm run migrate           # live database
 ```
 
+`0004_security.sql` adds the import add-on flag, two-step sign-in, the admin idle timer and the access log.
+`0005_drop_legacy.sql` removes the pre-plans `docs`/`history` copies — run it only after a backup.
+
 `0002_plans.sql` is additive: it moves the original shared plan into plan #1 (its first account becomes
 owner and admin) and leaves the old `docs`/`history` tables untouched for rollback.
 
 ## Release checklist (staging → live)
 
 1. Test on staging.
-2. Back up live: sign in on the live site and click **Full backup (.sql)** (Admin tab, or History →
-   Export on the original two-person version). The command-line equivalent is
+2. Back up live: Admin → **Full backup (encrypted)**, with a reason and a passphrase. The command-line equivalent is
    `npx wrangler d1 export nadu-wedding-db --remote --output backup.sql`.
 3. Run pending migrations on live (`npm run migrate`).
 4. Merge `staging` into `main` and push; GitHub Actions deploys.
 
 ## Backups and restore
 
-The in-app **Full backup** downloads `nadu-wedding-<env>-backup-<date>.sql`: every account (password
-hashes, not passwords), plan, member, invite, section and history entry. Sign-in sessions and rate-limit
-counters are left out, so after a restore everyone just signs in again. Restore into either database:
+The in-app **Full backup** (Admin tab) downloads `nadu-wedding-<env>-backup-<date>.nadubackup`, encrypted with the
+passphrase you type: every account (password hashes, not passwords), plan, member, invite, section, history entry,
+photo and access-log row. Sign-in sessions and rate-limit counters are left out, so after a restore everyone just
+signs in again. The reason you give is recorded in the access log. Restore:
 
 ```bash
-npx wrangler d1 execute nadu-wedding-db --remote --file nadu-wedding-production-backup-YYYYMMDD-HHMM.sql
+node scripts/decrypt-backup.mjs nadu-wedding-production-backup-YYYYMMDD-HHMM.nadubackup > backup.sql
+npx wrangler d1 execute nadu-wedding-db --remote --file backup.sql
+rm backup.sql
 ```
+
+When encryption at rest is on, the plan data inside stays encrypted with `DATA_KEY`, so restore into a Worker that
+has the same key. Keep backups for at most 90 days.
 
 The file recreates any missing tables and overwrites rows with the same ids, so it works on an empty
 database or on top of the current one. D1 Time Travel (`npx wrangler d1 time-travel restore`) can also
