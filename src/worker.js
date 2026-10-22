@@ -1,6 +1,8 @@
 // 나단 & 두연 웨딩 — API for the shared wedding plan.
 // Static page comes from ./public via the ASSETS binding; everything under /api/* lands here.
 
+import { buildSqlBackup, backupResponse } from './backup.js';
+
 const SHARED_KEYS = new Set([
   'budget', 'selectedVenue', 'selectedLoan', 'venues', 'nonVenue', 'afterCosts', 'honsu', 'categories', 'loans', 'seeded',
   'wedding', 'checks', 'tasks', 'expenses', 'split', 'guests', 'guestRate', 'giftLog', 'vendors'
@@ -214,6 +216,10 @@ async function api(req, env, url) {
   if (p.startsWith('/api/history/') && m === 'GET') return historyItem(env, Number(p.split('/').pop()));
   if (p === '/api/restore' && m === 'POST') return restore(req, env, user);
   if (p === '/api/export' && m === 'GET') return exportAll(env);
+  if (p === '/api/backup' && m === 'GET') {
+    const envName = env.APP_ENV || 'production';
+    return backupResponse((await buildSqlBackup(env.DB, { env: envName })).sql, envName);
+  }
   if (p.startsWith('/api/doc/') && m === 'PUT') return putDoc(req, env, user, decodeURIComponent(p.slice('/api/doc/'.length)));
   return err(404, 'not_found');
 }

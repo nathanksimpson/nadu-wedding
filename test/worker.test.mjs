@@ -43,6 +43,15 @@ ok(r.data.rows[0].action === 'restore', 'restore recorded in history');
 ok((await call('/api/doc/hack', { method: 'PUT', sid: a, body: { value: 1, baseVersion: 0 } })).status === 400, 'unknown section rejected');
 const ex = await worker.fetch(new Request(base + '/api/export', { headers: { cookie: 'sid=' + a } }), env);
 ok(ex.headers.get('content-disposition').includes('attachment'), 'export downloads');
+{
+  const res = await worker.fetch(new Request(base + '/api/backup', { headers: { cookie: 'sid=' + a } }), env);
+  const sql = await res.text();
+  ok(res.status === 200 && /attachment; filename="nadu-wedding-production-backup-\d{8}-\d{4}\.sql"/.test(res.headers.get('content-disposition') || ''), 'full backup downloads as a dated .sql file');
+  ok(!sql.includes(a) && !/INTO "sessions"/.test(sql), 'backup leaves out sign-in sessions');
+  const restored = new DatabaseSync(':memory:'); restored.exec(sql);
+  ok(['users', 'docs', 'history'].every((t) => JSON.stringify(db.prepare(`SELECT * FROM ${t} ORDER BY rowid`).all()) === JSON.stringify(restored.prepare(`SELECT * FROM ${t} ORDER BY rowid`).all())), 'backup restores accounts, sections and history exactly');
+  ok((await call('/api/backup')).status === 401, 'backup needs sign-in');
+}
 const bad = await worker.fetch(new Request(base + '/api/doc/guests', { method: 'PUT', headers: { origin: 'https://evil.example', cookie: 'sid=' + a, 'content-type': 'application/json' }, body: '{"value":[],"baseVersion":3}' }), env);
 ok(bad.status === 403, 'cross-site write blocked');
 await call('/api/logout', { method: 'POST', sid: a });
