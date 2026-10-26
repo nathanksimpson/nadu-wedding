@@ -77,7 +77,7 @@ window.NaduI18n.ja = {
     lastBy: (who, when) => `最終更新：${who} · ${when}`, ago: { s: 'たった今', m: (k) => `${k}分前`, h: (k) => `${k}時間前`, d: (k) => `${k}日前` },
     histHelp: '保存するたびに、その項目のバージョンとして残ります。古いバージョンに戻すと新しいバージョンが追加されるので、何も失われません。',
     hWhen: '日時', hWho: '変更した人', hWhat: '項目', hVer: 'バージョン', hAct: '種類', aEdit: '編集', aRestore: '復元', aImport: 'インポート', restoreL: 'このバージョンに戻す', restoreQ: '戻しますか？',
-    restored: '以前のバージョンに戻しました', more: 'さらに表示', histEmpty: 'まだ履歴がありません', filesLoaded: (a, b) => `写真を${b}枚中${a}枚アップロードしました`,
+    restored: '以前のバージョンに戻しました', more: 'さらに表示', histEmpty: 'まだ履歴がありません', listingsLoaded: (a, u) => `業者を${a}件追加しました` + (u ? `、${u}件更新` : ''), listingsNone: 'このリストファイルには業者が入っていません。', filesLoaded: (a, b) => `写真を${b}枚中${a}枚アップロードしました`,
     exportTitle: 'エクスポート', exJson: 'すべてのデータ（JSON）', exExp: '支出 CSV', exGuests: 'ゲスト CSV', exGifts: 'ご祝儀 CSV', exVendors: '業者 CSV', exHist: '変更履歴 CSV',
     keyLabels: { budget: '予算の入力', selectedVenue: '選んだ会場', selectedLoan: '選んだローン', venues: '会場のプラン', nonVenue: '会場以外の費用', afterCosts: '引っ越し費用',
       honsu: '혼수', categories: '追加カテゴリ', loans: 'ローンのプラン', seeded: '初期プラン', wedding: '挙式日', checks: 'チェックしたタスク', tasks: '自分たちのタスク', expenses: '支出',

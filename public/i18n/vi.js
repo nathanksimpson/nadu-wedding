@@ -77,7 +77,7 @@ window.NaduI18n.vi = {
     lastBy: (who, when) => `Sửa lần cuối: ${who} · ${when}`, ago: { s: 'vừa xong', m: (k) => `${k} phút trước`, h: (k) => `${k} giờ trước`, d: (k) => `${k} ngày trước` },
     histHelp: 'Mỗi lần lưu được giữ lại thành một phiên bản. Khôi phục bản cũ sẽ tạo phiên bản mới, nên không mất gì.',
     hWhen: 'Khi nào', hWho: 'Ai', hWhat: 'Mục', hVer: 'Phiên bản', hAct: 'Loại', aEdit: 'Sửa', aRestore: 'Khôi phục', aImport: 'Nhập', restoreL: 'Khôi phục phiên bản này', restoreQ: 'Khôi phục?',
-    restored: 'Đã khôi phục phiên bản trước', more: 'Xem thêm', histEmpty: 'Chưa có lịch sử', filesLoaded: (a, b) => `Đã tải lên ${a}/${b} ảnh`,
+    restored: 'Đã khôi phục phiên bản trước', more: 'Xem thêm', histEmpty: 'Chưa có lịch sử', listingsLoaded: (a, u) => `Đã thêm ${a} cửa hàng` + (u ? `, cập nhật ${u}` : ''), listingsNone: 'Tệp danh sách này không có cửa hàng nào.', filesLoaded: (a, b) => `Đã tải lên ${a}/${b} ảnh`,
     exportTitle: 'Xuất dữ liệu', exJson: 'Toàn bộ dữ liệu (JSON)', exExp: 'Khoản chi CSV', exGuests: 'Khách mời CSV', exGifts: 'Tiền mừng CSV', exVendors: 'Nhà cung cấp CSV', exHist: 'Lịch sử CSV',
     keyLabels: { budget: 'Thông số ngân sách', selectedVenue: 'Sảnh đã chọn', selectedLoan: 'Khoản vay đã chọn', venues: 'Phương án sảnh', nonVenue: 'Chi phí ngoài sảnh', afterCosts: 'Chi phí chuyển nhà',
       honsu: '혼수', categories: 'Danh mục thêm', loans: 'Phương án vay', seeded: 'Phương án mặc định', wedding: 'Ngày cưới', checks: 'Việc đã đánh dấu', tasks: 'Việc tự thêm', expenses: 'Khoản chi',

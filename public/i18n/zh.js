@@ -77,7 +77,7 @@ window.NaduI18n.zh = {
     lastBy: (who, when) => `最后修改：${who} · ${when}`, ago: { s: '刚刚', m: (k) => `${k} 分钟前`, h: (k) => `${k} 小时前`, d: (k) => `${k} 天前` },
     histHelp: '每次保存都会作为该部分的一个版本保留。恢复旧版本会新增一个版本，所以不会丢失任何内容。',
     hWhen: '时间', hWho: '修改人', hWhat: '部分', hVer: '版本', hAct: '类型', aEdit: '修改', aRestore: '恢复', aImport: '导入', restoreL: '恢复此版本', restoreQ: '确定恢复？',
-    restored: '已恢复到之前的版本', more: '加载更多', histEmpty: '还没有记录', filesLoaded: (a, b) => `已上传 ${a}/${b} 张照片`,
+    restored: '已恢复到之前的版本', more: '加载更多', histEmpty: '还没有记录', listingsLoaded: (a, u) => `已添加 ${a} 家商家` + (u ? `，更新 ${u} 家` : ''), listingsNone: '这个列表文件里没有商家。', filesLoaded: (a, b) => `已上传 ${a}/${b} 张照片`,
     exportTitle: '导出', exJson: '全部数据（JSON）', exExp: '支出 CSV', exGuests: '宾客 CSV', exGifts: '礼金 CSV', exVendors: '商家 CSV', exHist: '修改记录 CSV',
     keyLabels: { budget: '预算参数', selectedVenue: '所选场地', selectedLoan: '所选贷款', venues: '场地方案', nonVenue: '场地以外费用', afterCosts: '搬家费用',
       honsu: '혼수', categories: '额外类别', loans: '贷款方案', seeded: '默认方案', wedding: '婚礼日期', checks: '已完成待办', tasks: '自添待办', expenses: '支出',
