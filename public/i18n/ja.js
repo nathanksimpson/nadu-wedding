@@ -61,6 +61,7 @@ window.NaduI18n.ja = {
     fVendor: '業者', fQuote: '最初の見積もり', fFinal: '最終価格', phVendorMemo: '例：元データ付き、追加料金', savedL: '節約', pickL: '決定', pickedL: '決定済み', toExp: '支出に追加', inExp: '支出に追加済み',
     vendorEmpty: '業者の見積もりを追加すると並べて比較できます', nVendors: (k) => `業者${k}件`, addedExp: '支払予定として支出に追加しました',
     repPrep: '準備状況', repSpend: '支出と分担', repPeople: 'ゲストとご祝儀', tHistory: '変更履歴', printNow: '印刷 · PDFで保存',
+    repNotes: 'メモ一覧', noteOpen: '大きな画面で書く', noteDone: '完了', noteChars: (k) => `${k.toLocaleString()}文字`, noteNone: 'まだメモがありません',
     gPass: 'パスワード', gLogin: 'ログイン', gSignup: 'アカウント作成', gToSignup: 'はじめての方はアカウント作成', gToLogin: 'アカウントをお持ちの方はログイン', gTitleLogin: 'ログイン', gTitleSignup: '無料トライアルを始める',
     gErr: {
       age_required: '14歳以上でないと登録できません。', common_password: 'よく使われるパスワードです。別のものにしてください。', password_has_email: 'パスワードにメールアドレスを含めないでください。',

@@ -179,6 +179,63 @@
     i.addEventListener('input', () => { set(i.value); save(); compute(); });
     return i;
   }
+  // ---------- note fields: a one-line box that pops out into a large editor ----------
+  // The small box is a one-row textarea (keeps line breaks). Enter submits its form (or leaves the field);
+  // Shift+Enter adds a line. The ⤢ button opens a large editor; Done writes back and fires the usual input/change.
+  let noteDlg = null;
+  function noteDialog() {
+    if (noteDlg) return noteDlg;
+    const ta = el('textarea', { id: 'note-big', rows: 14, maxlength: 4000 });
+    const title = el('h3', { id: 'note-title' }), count = el('span', { class: 'small note-count' });
+    const done = el('button', { type: 'button', class: 'primary', id: 'note-done' }), cancel = el('button', { type: 'button', id: 'note-cancel' });
+    const d = el('dialog', { class: 'note-dialog', 'aria-labelledby': 'note-title' }, title, ta, el('div', { class: 'note-acts' }, count, el('div', { class: 'row-btns' }, cancel, done)));
+    document.body.append(d);
+    const upd = () => { count.textContent = T('noteChars')(ta.value.length); };
+    ta.addEventListener('input', upd);
+    ta.addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); done.click(); } });
+    cancel.addEventListener('click', () => d.close());
+    done.addEventListener('click', () => {
+      const t = d._target; if (t && !t.disabled) { t.value = ta.value; t.dispatchEvent(new Event('input', { bubbles: true })); t.dispatchEvent(new Event('change', { bubbles: true })); }
+      d.close(); t && t.focus();
+    });
+    noteDlg = { d, ta, title, count, done, cancel, upd };
+    return noteDlg;
+  }
+  function openNote(target, label) {
+    const N = noteDialog();
+    N.d._target = target; N.title.textContent = label || T('fMemo');
+    N.done.textContent = T('noteDone'); N.cancel.textContent = T('cancel');
+    N.ta.value = target.value; N.ta.readOnly = !!target.disabled; N.done.hidden = !!target.disabled; N.upd();
+    N.d.showModal(); N.ta.focus(); N.ta.setSelectionRange(N.ta.value.length, N.ta.value.length);
+  }
+  // Wraps a textarea in the small-line + pop-out control. Returns the wrapper; the textarea keeps its id/name.
+  function noteWrap(ta, label) {
+    ta.classList.add('note-line'); ta.rows = 1; ta.maxLength = 4000;
+    const btn = el('button', { type: 'button', class: 'note-pop', 'aria-label': T('noteOpen') + (label ? ': ' + label : ''), title: T('noteOpen') });
+    const mark = () => { const lines = ta.value ? ta.value.split('\n').length : 0; btn.textContent = lines > 1 ? '⤢ ' + lines : '⤢'; btn.classList.toggle('has-more', lines > 1); };
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const who = ta.form && ta.form.elements.name && ta.form.elements.name.value.trim();   // e.g. the guest or item being entered
+      openNote(ta, who ? `${label} · ${who}` : label);
+    });
+    ta.addEventListener('input', mark);
+    ta.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' || e.shiftKey || e.isComposing) return;   // Shift+Enter = new line; IME composition untouched
+      e.preventDefault();
+      if (ta.form && ta.form.requestSubmit) ta.form.requestSubmit(); else ta.blur();
+    });
+    const w = el('div', { class: 'note-wrap' }, ta, btn);
+    w._mark = mark; mark();
+    return w;
+  }
+  function noteInput(id, get, set, extra = {}, label = '') {
+    const ta = el('textarea', { id, ...extra }); ta.value = get() || '';
+    ta.addEventListener('input', () => { set(ta.value); save(); compute(); });
+    return noteWrap(ta, label || extra['aria-label']);
+  }
+  // Table cell for a note: line breaks kept, long notes clamped on screen (full text on hover and in print).
+  const noteCell = (text, cls = 'l wrap-cell') => el('td', { class: cls + ' note-cell', title: text || '' }, el('div', { class: 'note-clamp', text: text || '' }));
+
   function delBtn(label, onConfirm) {
     const b = el('button', { type: 'button', class: 'ghost', 'aria-label': label, text: '✕' });
     b.addEventListener('click', () => {
@@ -367,7 +424,7 @@
           el('label', { class: 'f', for: `v-${v.id}-cmin` }, T('capMin'), numInput(`v-${v.id}-cmin`, () => v.capMin, (x) => v.capMin = x, { min: 0, placeholder: '0' })),
           el('label', { class: 'f', for: `v-${v.id}-cmax` }, T('capMax'), numInput(`v-${v.id}-cmax`, () => v.capMax, (x) => v.capMax = x, { min: 0, placeholder: T('noLimit') }))),
         el('div', { class: 'small' }, T('fixedFees')), lines,
-        el('label', { class: 'f', for: `v-${v.id}-notes` }, T('notes'), textInput(`v-${v.id}-notes`, () => v.notes, (x) => v.notes = x)),
+        el('label', { class: 'f', for: `v-${v.id}-notes` }, T('notes'), noteInput(`v-${v.id}-notes`, () => v.notes, (x) => v.notes = x, {}, `${T('notes')} · ${nm(v)}`)),
         el('div', { class: 'row-btns' }, addLine, dup, pick, el('label', { class: 'check', for: inc.id }, inc, T('include'))),
         el('div', { class: 'card-foot', id: `v-${v.id}-foot` }));
     });
@@ -435,7 +492,7 @@
         el('td', { style: 'min-width:5.5rem' }, numInput(`l-${l.id}-rate`, () => l.rate, (x) => l.rate = x, { step: 0.05, min: 0, 'aria-label': T('colRate') })),
         el('td', { style: 'min-width:9rem' }, moneyInput(`l-${l.id}-lim`, () => l.limit, (x) => l.limit = x, { 'aria-label': T('colLimit') })),
         el('td', { class: 'n', 'data-m': l.id }), el('td', { class: 'n', 'data-y': l.id }),
-        el('td', { class: 'l', style: 'min-width:14rem' }, textInput(`l-${l.id}-note`, () => l.note, (x) => l.note = x, { 'aria-label': T('colNotes') })),
+        el('td', { class: 'l', style: 'min-width:14rem' }, noteInput(`l-${l.id}-note`, () => l.note, (x) => l.note = x, { 'aria-label': T('colNotes') }, `${T('colNotes')} · ${nm(l)}`)),
         el('td', {}, delBtn('Delete loan', () => { S.loans = S.loans.filter((y) => y !== l); if (S.selectedLoan === l.id) S.selectedLoan = S.loans[0]?.id; save(); renderLoans(); compute(); }))));
     });
   }
@@ -583,7 +640,7 @@
   }
 
   // ---------- report ----------
-  const REP_SECTIONS = [['inputs', 'repInputs'], ['chart', 'repChart'], ['compare', 'repCompare'], ['detail', 'repDetail'], ['shared', 'repShared'], ['loans', 'repLoans'], ['walk', 'repWalk'], ['prep', 'repPrep'], ['spend', 'repSpend'], ['people', 'repPeople']];
+  const REP_SECTIONS = [['inputs', 'repInputs'], ['chart', 'repChart'], ['compare', 'repCompare'], ['detail', 'repDetail'], ['shared', 'repShared'], ['loans', 'repLoans'], ['walk', 'repWalk'], ['prep', 'repPrep'], ['spend', 'repSpend'], ['people', 'repPeople'], ['notes', 'repNotes']];
   function repState() {
     S.report = S.report || {};
     S.report.sections = S.report.sections || {};
@@ -617,7 +674,7 @@
     const opts = el('div', { class: 'opt-grid' });
     M.inc.forEach((x) => {
       const rows = [...x.v.lines.map((l) => [nm(l), n(l.amount)]), [`${T('fMeals')} (${x.billed} × ${comma(x.v.food)})`, x.food]];
-      opts.append(el('div', { class: 'opt' }, el('h4', { text: nm(x.v) }), x.v.notes ? el('div', { class: 'small', text: x.v.notes }) : null,
+      opts.append(el('div', { class: 'opt' }, el('h4', { text: nm(x.v) }), x.v.notes ? el('div', { class: 'small note-text', text: x.v.notes }) : null,
         el('table', {}, el('tbody', {}, rows.map(([k, v]) => el('tr', {}, el('td', { class: 'l', text: k }), el('td', { class: 'n', text: won(v) }))),
           el('tr', { class: 'tot' }, el('td', { class: 'l', text: T('dSum') }), el('td', { class: 'n', text: won(x.venueTotal) })),
           el('tr', {}, el('td', { class: 'l', text: T('nvTitle') }), el('td', { class: 'n', text: won(M.nvTotal) })),
@@ -635,6 +692,7 @@
     if (repHas('prep')) reportPrep(R);
     if (repHas('spend')) reportSpend(R);
     if (repHas('people')) reportPeople(R);
+    if (repHas('notes')) reportNotes(R, M);
   }
   function openReport(show) {
     $('report-sec').hidden = !show;
@@ -819,7 +877,8 @@
     giftTitle: '받은 축의금', fThanked: '감사 인사 완료', phGiftMemo: '예: 대학 동기, 계좌 입금', phSearchGift: '이름으로 검색', kGiftG: '신랑측', kGiftB: '신부측', kThanks: '감사 인사 남음', giftEmpty: '받은 축의금을 기록하면 이름으로 바로 찾을 수 있어요', thanked: '감사 인사',
     vendorTitle: '업체 비교', vHint: '같은 카테고리 안에서 최종가가 가장 낮은 곳은 초록색으로 표시돼요. 결정한 업체는 지출 내역에 결제 예정으로 바로 넣을 수 있어요.', fVendor: '업체명', fQuote: '첫 견적', fFinal: '최종가', phVendorMemo: '예: 원본 제공, 추가금 조건',
     savedL: '절감', pickL: '결정', pickedL: '결정됨', toExp: '지출에 넣기', inExp: '지출에 있음', vendorEmpty: '견적 받은 업체를 넣으면 카테고리별로 나란히 비교돼요', nVendors: (k) => `업체 ${k}곳`, addedExp: '지출 내역에 결제 예정으로 넣었어요',
-    repPrep: '준비 현황', repSpend: '지출·정산', repPeople: '하객·축의금'
+    repPrep: '준비 현황', repSpend: '지출·정산', repPeople: '하객·축의금', repNotes: '메모 전체',
+    noteOpen: '크게 열어서 쓰기', noteDone: '완료', noteChars: (k) => `${k.toLocaleString()}자`, noteNone: '아직 메모가 없어요'
   });
   Object.assign(L.en, {
     eyebrow: 'Nadu Wedding Planner', tDash: 'Dashboard', tPlan: 'Budget plan', tList: 'Checklist', tSpend: 'Spending & split', tGuests: 'Guests', tGifts: 'Gift money', tVendors: 'Vendors', tSdm: 'Studio & dress',
@@ -838,7 +897,8 @@
     giftTitle: 'Gift money received', fThanked: 'Thank-you sent', phGiftMemo: 'e.g. uni friend, bank transfer', phSearchGift: 'Search by name', kGiftG: "Groom's side", kGiftB: "Bride's side", kThanks: 'Thank-yous left', giftEmpty: 'Log gift money here and find anyone by name later', thanked: 'Thanked',
     vendorTitle: 'Vendor comparison', vHint: 'The lowest final price in each category shows in green. Once you pick a vendor you can add it to expenses as an upcoming payment.', fVendor: 'Vendor', fQuote: 'First quote', fFinal: 'Final price', phVendorMemo: 'e.g. original files included, extra fees',
     savedL: 'Saved', pickL: 'Pick', pickedL: 'Picked', toExp: 'Add to expenses', inExp: 'In expenses', vendorEmpty: 'Add vendor quotes to compare them side by side', nVendors: (k) => `${k} vendor${k === 1 ? '' : 's'}`, addedExp: 'Added to expenses as an upcoming payment',
-    repPrep: 'Preparation', repSpend: 'Spending & split', repPeople: 'Guests & gift money'
+    repPrep: 'Preparation', repSpend: 'Spending & split', repPeople: 'Guests & gift money', repNotes: 'All notes',
+    noteOpen: 'Open a larger editor', noteDone: 'Done', noteChars: (k) => `${k.toLocaleString()} characters`, noteNone: 'No notes yet'
   });
 
   function ensurePrep() {
@@ -1043,6 +1103,11 @@
       const iid = `${id}-${fd.name}`; let inp;
       if (fd.type === 'check') { inp = el('input', { type: 'checkbox', id: iid, name: fd.name }); f.append(el('label', { class: 'check' + (fd.wide ? ' wide' : ''), for: iid }, inp, fd.label)); return; }
       if (fd.type === 'select') { inp = el('select', { id: iid, name: fd.name }, fd.opts().map(([v, l]) => el('option', { value: v, text: l }))); if (fd.def != null) inp.value = fd.def; }
+      else if (fd.type === 'note') {
+        const ta = el('textarea', { id: iid, name: fd.name, placeholder: fd.ph || '' });
+        f.append(el('label', { class: 'f' + (fd.wide ? ' wide' : ''), for: iid }, fd.label, noteWrap(ta, fd.label)));
+        return;
+      }
       else {
         inp = el('input', { id: iid, name: fd.name, type: fd.type === 'number' ? 'number' : 'text', placeholder: fd.ph || '', class: fd.type === 'money' ? 'money' : '', inputmode: fd.type === 'money' ? 'numeric' : undefined, min: fd.type === 'number' ? 0 : undefined });
         if (fd.def != null) inp.value = fd.def;
@@ -1061,18 +1126,20 @@
       f.reset(); Object.entries(keep).forEach(([k, v]) => { f.elements[k].value = v; });
       fields.forEach((fd) => { if (fd.def != null && fd.type !== 'select') f.elements[fd.name].value = fd.def; });
       f._editId = null; cancel.hidden = true; sub.textContent = T('save'); f.classList.remove('editing'); showSplit(false);
+      f.querySelectorAll('.note-wrap').forEach((w) => w._mark && w._mark());
     };
     cancel.addEventListener('click', f.resetForm);
     f.addEventListener('submit', (e) => {
       e.preventDefault();
       const o = {}; fields.forEach((fd) => { const x = f.elements[fd.name]; o[fd.name] = fd.type === 'check' ? x.checked : fd.type === 'money' ? parse(x.value) : fd.type === 'number' ? n(x.value) : x.value.trim(); });
       if (onSubmit(o, f._editId) === false) return;
-      f.resetForm(); f.querySelector('input:not([type=checkbox])')?.focus();
+      f.resetForm(); f.querySelector('input:not([type=checkbox]), textarea')?.focus();
     });
     f.edit = (obj) => {
       fields.forEach((fd) => { const x = f.elements[fd.name]; if (fd.type === 'check') x.checked = !!obj[fd.name]; else if (fd.type === 'money') x.value = obj[fd.name] ? comma(obj[fd.name]) : ''; else x.value = obj[fd.name] ?? ''; });
       showSplit(!!(f.elements.custom && f.elements.custom.checked));
       f._editId = obj.id; cancel.hidden = false; sub.textContent = T('update'); f.classList.add('editing');
+      f.querySelectorAll('.note-wrap').forEach((w) => w._mark && w._mark());
       f.scrollIntoView({ behavior: 'smooth', block: 'center' }); f.querySelector('input:not([type=checkbox])')?.focus({ preventScroll: true });
     };
     return f;
@@ -1088,7 +1155,7 @@
     forms.exp = entryForm('exp-form', [
       { name: 'cat', type: 'select', label: T('fCat'), opts: opts.cats }, { name: 'name', type: 'text', label: T('fItem'), ph: T('phExp') },
       { name: 'amount', type: 'money', label: T('fAmt') }, { name: 'status', type: 'select', label: T('fStatus'), opts: opts.expStatus },
-      { name: 'paidBy', type: 'select', label: T('fPaidBy'), opts: opts.parties }, { name: 'memo', type: 'text', label: T('fMemo'), wide: true },
+      { name: 'paidBy', type: 'select', label: T('fPaidBy'), opts: opts.parties }, { name: 'memo', type: 'note', label: T('fMemo'), wide: true },
       { name: 'custom', type: 'check', label: T('fOwnSplit'), wide: true },
       ...PARTIES.map((p) => ({ name: 's' + p[0], type: 'number', label: pname(p[0]), split: true }))
     ], (o, id) => {
@@ -1099,17 +1166,17 @@
     forms.guest = entryForm('guest-form', [
       { name: 'name', type: 'text', label: T('fName') }, { name: 'side', type: 'select', label: T('fSide'), opts: opts.sides },
       { name: 'group', type: 'text', label: T('fGroup'), ph: T('phGroup') }, { name: 'count', type: 'number', label: T('fCount'), def: 1 },
-      { name: 'status', type: 'select', label: T('fAttend'), opts: opts.attend }, { name: 'memo', type: 'text', label: T('fMemo'), wide: true }
+      { name: 'status', type: 'select', label: T('fAttend'), opts: opts.attend }, { name: 'memo', type: 'note', label: T('fMemo'), wide: true }
     ], (o, id) => { if (!o.name) return false; upsert(S.guests, id, { ...o, count: Math.max(1, o.count || 1) }); save(); renderGuests(); prepSums(); });
     forms.gift = entryForm('gift-form', [
       { name: 'name', type: 'text', label: T('fName') }, { name: 'side', type: 'select', label: T('fSide'), opts: opts.sides },
-      { name: 'amount', type: 'money', label: T('fAmt') }, { name: 'memo', type: 'text', label: T('fMemo'), ph: T('phGiftMemo'), wide: true },
+      { name: 'amount', type: 'money', label: T('fAmt') }, { name: 'memo', type: 'note', label: T('fMemo'), ph: T('phGiftMemo'), wide: true },
       { name: 'thanked', type: 'check', label: T('fThanked') }
     ], (o, id) => { if (!o.name || !o.amount) return false; upsert(S.giftLog, id, o); save(); renderGifts(); prepSums(); });
     forms.vendor = entryForm('vendor-form', [
       { name: 'cat', type: 'select', label: T('fCat'), opts: opts.cats }, { name: 'name', type: 'text', label: T('fVendor') },
       { name: 'quote', type: 'money', label: T('fQuote') }, { name: 'final', type: 'money', label: T('fFinal') },
-      { name: 'memo', type: 'text', label: T('fMemo'), ph: T('phVendorMemo'), wide: true }
+      { name: 'memo', type: 'note', label: T('fMemo'), ph: T('phVendorMemo'), wide: true }
     ], (o, id) => { if (!o.name) return false; upsert(S.vendors, id, o); save(); renderVendors(); prepSums(); });
     [['exp-form-host', forms.exp], ['guest-form-host', forms.guest], ['gift-form-host', forms.gift], ['vendor-form-host', forms.vendor]].forEach(([h, f]) => { const host = $(h); host.innerHTML = ''; host.append(f); });
     forms.lang = S.lang;
@@ -1129,7 +1196,7 @@
     list.forEach((x) => tb.append(el('tr', {},
       el('td', { class: 'l', text: cname(x.cat) }), el('td', { class: 'l vname', text: x.name }), el('td', { class: 'n', text: won(n(x.amount)) }),
       el('td', { class: 'l' }, el('span', { class: 'chip ' + (x.status === 'paid' ? 'good' : 'plan'), text: x.status === 'paid' ? T('expPaid') : T('expPlanned') })),
-      el('td', { class: 'l', text: pname(x.paidBy) + (x.custom ? ' *' : '') }), el('td', { class: 'l wrap-cell', text: x.memo || '' }),
+      el('td', { class: 'l', text: pname(x.paidBy) + (x.custom ? ' *' : '') }), noteCell(x.memo),
       rowActs(() => forms.exp.edit(x), () => { S.expenses = S.expenses.filter((y) => y !== x); save(); renderSpend(); prepSums(); }))));
     if (list.length) tb.append(el('tr', { class: 'tot' }, el('td', { class: 'l', colspan: 2, text: T('sumAll') }), el('td', { class: 'n', text: won(et.paid + et.planned) }), el('td', { colspan: 4 })));
     tbl.append(tb);
@@ -1193,7 +1260,7 @@
       el('td', { class: 'l vname', text: x.name }), el('td', { class: 'l', text: x.side === 'b' ? T('sideB') : T('sideG') }), el('td', { class: 'l', text: x.group || '' }),
       el('td', { class: 'n', text: Math.max(1, n(x.count)) }),
       el('td', { class: 'l' }, el('span', { class: 'chip ' + ({ yes: 'good', maybe: 'plan', no: '' }[x.status] || ''), text: T({ yes: 'aYes', maybe: 'aMaybe', no: 'aNo' }[x.status] || 'aMaybe') })),
-      el('td', { class: 'l wrap-cell', text: x.memo || '' }),
+      noteCell(x.memo),
       rowActs(() => forms.guest.edit(x), () => { S.guests = S.guests.filter((y) => y !== x); save(); renderGuests(); prepSums(); }))));
     tbl.append(tb);
   }
@@ -1214,7 +1281,7 @@
       const cb = el('input', { type: 'checkbox', class: 'ck', id: 'th-' + x.id, 'aria-label': T('fThanked') }); cb.checked = !!x.thanked;
       cb.addEventListener('change', () => { x.thanked = cb.checked; save(); renderGifts(); });
       tb.append(el('tr', {}, el('td', { class: 'l vname', text: x.name }), el('td', { class: 'l', text: x.side === 'b' ? T('sideB') : T('sideG') }), el('td', { class: 'n', text: won(n(x.amount)) }),
-        el('td', { class: 'l wrap-cell', text: x.memo || '' }), el('td', { class: 'l' }, cb),
+        noteCell(x.memo), el('td', { class: 'l' }, cb),
         rowActs(() => forms.gift.edit(x), () => { S.giftLog = S.giftLog.filter((y) => y !== x); save(); renderGifts(); prepSums(); })));
     });
     tbl.append(tb);
@@ -1271,7 +1338,7 @@
         const saved = n(v.quote) && n(v.final) ? n(v.quote) - n(v.final) : 0;
         tb.append(el('tr', { class: (low != null && fin === low ? 'best ' : '') + (v.picked ? 'picked' : '') },
           el('td', { class: 'l vname', text: v.name }), el('td', { class: 'n', text: n(v.quote) ? won(n(v.quote)) : '–' }), el('td', { class: 'n fin', text: fin ? won(fin) : '–' }),
-          el('td', { class: 'n ' + (saved > 0 ? 'pos' : ''), text: saved ? won(saved) : '–' }), el('td', { class: 'l wrap-cell', text: v.memo || '' }), cell,
+          el('td', { class: 'n ' + (saved > 0 ? 'pos' : ''), text: saved ? won(saved) : '–' }), noteCell(v.memo), cell,
           rowActs(() => forms.vendor.edit(v), () => { S.vendors = S.vendors.filter((y) => y !== v); save(); renderVendors(); prepSums(); })));
       });
     });
@@ -1293,6 +1360,22 @@
         el('tr', { class: 'tot' }, el('td', { class: 'l', text: T('sumAll') }), el('td', { class: 'n', text: won(et.paid) }), el('td', { class: 'n', text: won(et.planned) }))));
     const tr = el('ul', { class: 'transfers' }, st.tr.length ? st.tr.map((x) => el('li', {}, el('span', { text: `${pname(x.from)} → ${pname(x.to)}` }), el('b', { text: won(x.amt) }))) : el('li', {}, T('noTransfer')));
     R.append(el('section', {}, el('h3', { text: T('repSpend') }), el('div', { class: 'scroll' }, tbl), el('div', { class: 'small', text: T('sTransfers') }), tr));
+  }
+  // Every note in the plan, in full with its line breaks, grouped by where it was written.
+  function reportNotes(R, M) {
+    const groups = [
+      [T('secVenues'), (M ? M.inc.map((x) => x.v) : S.venues).filter((v) => v.notes).map((v) => [nm(v), v.notes])],
+      [T('secLoans'), S.loans.filter((l) => l.note).map((l) => [nm(l), l.note])],
+      [T('spendTitle'), S.expenses.filter((x) => x.memo).map((x) => [`${cname(x.cat)} · ${x.name}`, x.memo])],
+      [T('vendorTitle'), S.vendors.filter((v) => v.memo).map((v) => [`${cname(v.cat)} · ${v.name}`, v.memo])],
+      [T('guestTitle'), S.guests.filter((x) => x.memo).map((x) => [x.name + (x.group ? ` (${x.group})` : ''), x.memo])],
+      [T('giftTitle'), S.giftLog.filter((x) => x.memo).map((x) => [x.name, x.memo])]
+    ].filter(([, rows]) => rows.length);
+    const sec = el('section', { class: 'rep-notes' }, el('h3', { text: T('repNotes') }));
+    if (!groups.length) sec.append(el('p', { class: 'small', text: T('noteNone') }));
+    groups.forEach(([title, rows]) => sec.append(el('h4', { text: title }),
+      el('dl', { class: 'note-list' }, rows.flatMap(([k, v]) => [el('dt', { text: k }), el('dd', { class: 'note-text', text: v })]))));
+    R.append(sec);
   }
   function reportPeople(R) {
     const gs = guestStats(), gt = giftTotals();
@@ -1732,7 +1815,7 @@
     if (ro) b.textContent = T('roBanner')[p.access === 'expired' ? 'expired' : 'viewer'] + (p.access === 'expired' ? ' ' + T('payHow') + (ENV.contact ? ` (${ENV.contact})` : '') : '');
     if (!ro) { ['btn-reset', 'io-load', 'io-file', 'wd'].forEach((id) => { if ($(id)) $(id).disabled = false; }); return; }
     document.querySelectorAll('.tabpanel:not([data-panel="settings"]):not([data-panel="admin"]) :is(input, select, textarea, button)').forEach((n) => {
-      if (n.closest('.tabs') || n.closest('#export-btns') || n.id === 'hist-more' || n.closest('.fold') || n.classList.contains('fold') || n.closest('.seg') || n.closest('.chipbtn') || n.classList.contains('chipbtn') || n.type === 'search' || n.closest('.searchrow')) return;
+      if (n.classList.contains('note-pop') || n.closest('.tabs') || n.closest('#export-btns') || n.id === 'hist-more' || n.closest('.fold') || n.classList.contains('fold') || n.closest('.seg') || n.closest('.chipbtn') || n.classList.contains('chipbtn') || n.type === 'search' || n.closest('.searchrow')) return;
       n.disabled = true;
     });
     ['btn-reset', 'io-load', 'io-file', 'wd'].forEach((id) => { if ($(id)) $(id).disabled = true; });

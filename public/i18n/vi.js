@@ -61,6 +61,7 @@ window.NaduI18n.vi = {
     fVendor: 'Nhà cung cấp', fQuote: 'Báo giá đầu', fFinal: 'Giá cuối', phVendorMemo: 'vd. có ảnh gốc, phụ phí', savedL: 'Tiết kiệm', pickL: 'Chọn', pickedL: 'Đã chọn', toExp: 'Thêm vào khoản chi', inExp: 'Đã có trong khoản chi',
     vendorEmpty: 'Thêm báo giá để so sánh cạnh nhau', nVendors: (k) => `${k} nhà cung cấp`, addedExp: 'Đã thêm vào khoản chi sắp trả',
     repPrep: 'Chuẩn bị', repSpend: 'Chi tiêu & chia', repPeople: 'Khách mời & tiền mừng', tHistory: 'Lịch sử', printNow: 'In · Lưu PDF',
+    repNotes: 'Tất cả ghi chú', noteOpen: 'Mở trình soạn thảo lớn', noteDone: 'Xong', noteChars: (k) => `${k.toLocaleString()} ký tự`, noteNone: 'Chưa có ghi chú',
     gPass: 'Mật khẩu', gLogin: 'Đăng nhập', gSignup: 'Tạo tài khoản', gToSignup: 'Lần đầu? Tạo tài khoản', gToLogin: 'Đã có tài khoản? Đăng nhập', gTitleLogin: 'Đăng nhập', gTitleSignup: 'Bắt đầu dùng thử miễn phí',
     gErr: {
       age_required: 'Bạn phải từ 14 tuổi trở lên để đăng ký.', common_password: 'Mật khẩu quá phổ biến. Hãy chọn mật khẩu khác.', password_has_email: 'Đừng đặt email trong mật khẩu.',

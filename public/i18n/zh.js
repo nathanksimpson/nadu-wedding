@@ -61,6 +61,7 @@ window.NaduI18n.zh = {
     fVendor: '商家', fQuote: '首次报价', fFinal: '最终价', phVendorMemo: '例：含原片、额外费用', savedL: '节省', pickL: '选定', pickedL: '已选定', toExp: '加入支出', inExp: '已在支出中',
     vendorEmpty: '添加商家报价即可并排比较', nVendors: (k) => `${k} 家商家`, addedExp: '已作为待付款加入支出',
     repPrep: '准备情况', repSpend: '支出与分摊', repPeople: '宾客与礼金', tHistory: '修改记录', printNow: '打印 · 保存为 PDF',
+    repNotes: '全部备注', noteOpen: '放大编辑', noteDone: '完成', noteChars: (k) => `${k.toLocaleString()} 字`, noteNone: '还没有备注',
     gPass: '密码', gLogin: '登录', gSignup: '创建账户', gToSignup: '第一次来？创建账户', gToLogin: '已有账户？登录', gTitleLogin: '登录', gTitleSignup: '开始免费试用',
     gErr: {
       age_required: '年满 14 岁才能注册。', common_password: '密码太常见，请换一个。', password_has_email: '密码中不要包含邮箱。',

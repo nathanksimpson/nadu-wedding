@@ -61,6 +61,7 @@ window.NaduI18n.th = {
     fVendor: 'ร้าน', fQuote: 'ราคาเสนอแรก', fFinal: 'ราคาสุดท้าย', phVendorMemo: 'เช่น รวมไฟล์ต้นฉบับ ค่าใช้จ่ายเพิ่ม', savedL: 'ประหยัด', pickL: 'เลือก', pickedL: 'เลือกแล้ว', toExp: 'เพิ่มเป็นค่าใช้จ่าย', inExp: 'อยู่ในค่าใช้จ่ายแล้ว',
     vendorEmpty: 'เพิ่มราคาเสนอของร้านเพื่อเทียบกัน', nVendors: (k) => `${k} ร้าน`, addedExp: 'เพิ่มเป็นค่าใช้จ่ายที่จะจ่ายแล้ว',
     repPrep: 'การเตรียมงาน', repSpend: 'ค่าใช้จ่ายและการแบ่ง', repPeople: 'แขกและเงินช่วยงาน', tHistory: 'ประวัติ', printNow: 'พิมพ์ · บันทึก PDF',
+    repNotes: 'หมายเหตุทั้งหมด', noteOpen: 'เปิดหน้าต่างเขียนขนาดใหญ่', noteDone: 'เสร็จ', noteChars: (k) => `${k.toLocaleString()} ตัวอักษร`, noteNone: 'ยังไม่มีหมายเหตุ',
     gPass: 'รหัสผ่าน', gLogin: 'เข้าสู่ระบบ', gSignup: 'สร้างบัญชี', gToSignup: 'มาครั้งแรก? สร้างบัญชี', gToLogin: 'มีบัญชีแล้ว? เข้าสู่ระบบ', gTitleLogin: 'เข้าสู่ระบบ', gTitleSignup: 'เริ่มทดลองใช้ฟรี',
     gErr: {
       age_required: 'ต้องอายุ 14 ปีขึ้นไปจึงสมัครได้', common_password: 'รหัสผ่านนี้ใช้กันทั่วไปเกินไป โปรดเลือกใหม่', password_has_email: 'อย่าใส่อีเมลไว้ในรหัสผ่าน',
