@@ -37,7 +37,7 @@
       add: '업체 추가', edit: '수정', del: '삭제', delSure: '정말 삭제?', save: '저장', cancel: '취소', photo: '사진', photoPick: '사진 고르기', dzPhoto: '사진을 끌어다 놓거나 눌러서 고르세요', dzPhotoHint: 'JPG · PNG · WebP, 큰 사진은 자동으로 줄여요', dzPhotoBad: 'JPG, PNG, WebP 사진만 올릴 수 있어요', photoDel: '사진 빼기', uploading: '사진 올리는 중…', upFail: '사진을 올리지 못했어요',
       fKo: '이름 (한국어)', fEn: '이름 (영어)', fLo: '최저가 (만원)', fHi: '최고가 (만원)', fBlo: '본식만 최저 (만원)', fBhi: '본식만 최고 (만원)', fLabel: '가격 표기', fArtist: '대표 선생님', fLink: '링크', fLinkLabel: '링크 이름', fLineKo: '한 줄 소개 (한국어)', fLineEn: '한 줄 소개 (영어)', fNote: '짧은 메모', fTotal: '토탈 상품 (드레스·헤메 포함)', fFocus: '촬영 스타일', fPopular: '인기샵', fFlags: '촬영 가능',
       flagOpt: [['-', '모름'], ['O', '가능'], ['+', '추가금'], ['X', '없음']], needName: '이름을 적어주세요',
-      emptyTitle: '아직 업체 목록이 없어요', emptyHelp: '‘업체 추가’로 직접 넣거나, 업체 목록 파일이 있다면 내보내기·가져오기 메뉴의 ‘파일 열기’로 불러오세요.',
+      emptyTitle: '아직 업체 목록이 없어요', emptyHelp: '‘업체 추가’로 직접 넣거나, 업체 목록 파일이 있다면 내보내기·가져오기 메뉴의 ‘파일 열기’로 불러오세요. 목록 파일은 지금 있는 업체를 지우지 않고 더하기만 해요.',
       ro: '보기 전용이에요', source: '가격은 바뀔 수 있으니 계약 전에 꼭 다시 확인하세요.'
     },
     en: {
@@ -54,7 +54,7 @@
       add: 'Add a listing', edit: 'Edit', del: 'Delete', delSure: 'Delete it?', save: 'Save', cancel: 'Cancel', photo: 'Photo', photoPick: 'Choose photo', dzPhoto: 'Drop a photo here, or click to choose one', dzPhotoHint: 'JPG · PNG · WebP, large photos are resized', dzPhotoBad: 'Only JPG, PNG or WebP photos', photoDel: 'Remove photo', uploading: 'Uploading photo…', upFail: 'Couldn’t upload the photo',
       fKo: 'Name (Korean)', fEn: 'Name (English)', fLo: 'Lowest price (₩10k)', fHi: 'Highest price (₩10k)', fBlo: 'Ceremony only, lowest (₩10k)', fBhi: 'Ceremony only, highest (₩10k)', fLabel: 'Price as listed', fArtist: 'Known artist', fLink: 'Link', fLinkLabel: 'Link label', fLineKo: 'One-line note (Korean)', fLineEn: 'One-line note (English)', fNote: 'Short tag', fTotal: 'Package (dress & makeup included)', fFocus: 'Shooting style', fPopular: 'Popular', fFlags: 'Available scenes',
       flagOpt: [['-', 'Unknown'], ['O', 'Yes'], ['+', 'Extra fee'], ['X', 'No']], needName: 'Add a name',
-      emptyTitle: 'No listings yet', emptyHelp: 'Add shops with “Add a listing”, or if you have a listings file, open it with “Open file” in the export/import menu.',
+      emptyTitle: 'No listings yet', emptyHelp: 'Add shops with “Add a listing”, or if you have a listings file, open it with “Open file” in the export/import menu. A listings file only adds cards; it never removes the ones you have.',
       ro: 'View only', source: 'Prices change, so confirm before signing.'
     }
   };
@@ -83,6 +83,34 @@
     const out = {};
     CATS.forEach((k) => { out[k] = Array.isArray(c[k]) ? c[k].filter((x) => x && x.id) : []; });
     return out;
+  }
+  // A listings file adds 스드메 cards to the plan instead of replacing it. Accepted shapes:
+  //   { app: 'nadu-wedding', kind: 'listings', sdmCatalog: { tux: [...] } }
+  //   { app: 'nadu-wedding', data: { sdmCatalog: {...} } }   (data holds nothing but listings)
+  //   { sdmCatalog: {...} }
+  // Anything with other plan sections (a full export) is not a listings file. Returns the catalog or null.
+  const LISTING_META = new Set(['app', 'kind', 'version', 'files', 'sdmCatalog']);
+  function listingsOf(obj) {
+    if (!obj || typeof obj !== 'object' || Array.isArray(obj)) return null;
+    const src = obj.app === 'nadu-wedding' && obj.data && typeof obj.data === 'object' ? obj.data : obj;
+    if (!src.sdmCatalog || typeof src.sdmCatalog !== 'object' || Array.isArray(src.sdmCatalog)) return null;
+    if (Object.keys(src).some((k) => !LISTING_META.has(k))) return null;
+    if (src !== obj && Object.keys(obj).some((k) => !LISTING_META.has(k) && k !== 'data')) return null;
+    return src.sdmCatalog;
+  }
+  // Merge incoming cards into the current catalog by id: same id → that card is replaced, new id → added.
+  // Categories and cards not in the file are left exactly as they were.
+  function mergeCatalog(current, incoming) {
+    const out = normCatalog(current), inc = normCatalog(incoming);
+    let added = 0, updated = 0;
+    CATS.forEach((k) => {
+      out[k] = out[k].slice();
+      inc[k].forEach((x) => {
+        const i = out[k].findIndex((y) => y.id === x.id);
+        if (i >= 0) { out[k][i] = x; updated++; } else { out[k].push(x); added++; }
+      });
+    });
+    return { catalog: out, added, updated };
   }
   function normPicks(p, cat) {
     p = p && typeof p === 'object' ? p : {};
@@ -528,5 +556,5 @@ body.readonly .sdm .sdm-btn,body.readonly .sdm .sdm-del{display:none}
     document.head.append(s);
   }
 
-  window.NaduSdm = { render, normCatalog, normPicks, emptyPicks };
+  window.NaduSdm = { render, normCatalog, normPicks, emptyPicks, listingsOf, mergeCatalog };
 })();
