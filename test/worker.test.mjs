@@ -176,6 +176,45 @@ ok(me.plans[0].access === 'active' && me.plans[0].writable && me.plans[0].ai, 'p
 ok((await call('/api/doc/guests', { method: 'PUT', sid: duyeon, plan: P1, body: { value: [], baseVersion: 3 } })).status === 200, 'writes work again after payment');
 ok((await call(`/api/admin/plans/${P1}`, { method: 'PATCH', sid: eve, body: { extendDays: 9999 } })).status === 404, 'non-admin cannot extend a plan');
 
+// ---- AI quote/offer parser (Workers AI binding, faked here) ----
+let aiCalls = [];
+const abelloTool = { items: [
+  { dest: 'sdm', sdmCat: 'tux', tuxKind: 'custom', nameKo: '아벨로 클래식라인', nameEn: 'Abello Classic Line', priceLow: 600000, priceHigh: 600000, listPrice: 1200000, summaryKo: '맞춤정장 세트', summaryEn: 'Bespoke set', link: 'javascript:alert(1)' },
+  { dest: 'sdm', sdmCat: 'tux', tuxKind: 'weird', nameKo: '아벨로 시그니처라인', nameEn: 'Abello Signature', priceLow: 900000, priceHigh: 1000000, summaryKo: '조끼+수제화', summaryEn: 'Vest & shoes' },
+  { dest: 'venue', nameKo: '그랜드홀', nameEn: 'Grand Hall', priceLow: 0, foodPerPerson: 68000, minGuests: 250, lines: [{ nameKo: '대관료', nameEn: 'Hall', amount: 3000000 }], summaryKo: '보증 250', summaryEn: '250 guaranteed' },
+  { dest: 'loan', nameKo: '버팀목', nameEn: 'Beotimmok', priceLow: 0, ratePct: 2.345, limit: 200000000, summaryKo: '', summaryEn: '' },
+  { dest: 'nonsense', nameKo: '스냅 업체', nameEn: '', priceLow: -5, summaryKo: '', summaryEn: '' },
+  { dest: 'vendor', vendorCat: 'snap', nameKo: '', nameEn: '', priceLow: 1 },
+  { dest: 'vendor', vendorCat: 'snap', nameKo: '주민번호 900101-1234567', nameEn: 'x', priceLow: 1, summaryKo: '', summaryEn: '' }
+] };
+env.AI = { run: async (model, input) => { aiCalls.push({ model, input }); return { choices: [{ message: { tool_calls: [{ function: { name: 'add_to_plan', arguments: JSON.stringify(abelloTool) } }] } }] }; } };
+r = await call('/api/ai/parse', { method: 'POST', sid: eve, plan: P2, body: { text: '견적' } });
+ok(r.status === 402 && r.data.error === 'addon_required', 'parser needs the AI add-on');
+r = await call('/api/ai/parse', { method: 'POST', sid: duyeon, plan: P1, body: {} });
+ok(r.status === 400 && r.data.error === 'nothing_to_read', 'parser needs text or an image');
+r = await call('/api/ai/parse', { method: 'POST', sid: duyeon, plan: P1, body: { text: '신부 주민번호 900101-2234567' } });
+ok(r.status === 400 && r.data.error === 'id_number' && !aiCalls.length, 'ID numbers are refused before reaching the model');
+r = await call('/api/ai/parse', { method: 'POST', sid: duyeon, plan: P1, body: { image: { mime: 'image/svg+xml', data: 'AAAA' } } });
+ok(r.status === 400 && r.data.error === 'bad_image', 'only photo formats are accepted');
+r = await call('/api/ai/parse', { method: 'POST', sid: duyeon, plan: P1, body: { text: '아벨로 예복 50% 할인', image: { mime: 'image/png', data: 'iVBORw0KGgo=' } } });
+const items = r.data && r.data.items || [];
+ok(r.status === 200 && items.length === 5, 'parser returns cleaned items (nameless and ID-number items dropped)');
+ok(aiCalls[0].model === '@cf/google/gemma-4-26b-a4b-it' && aiCalls[0].input.messages[1].content[0].image_url.url.startsWith('data:image/png;base64,'), 'image goes to the Workers AI vision model');
+ok(items[0].link === '' && items[1].tuxKind === 'custom' && items[1].priceHigh === 1000000, 'bad links removed, enums defaulted');
+ok(items[2].dest === 'venue' && items[2].foodPerPerson === 68000 && items[2].lines[0].amount === 3000000, 'venue fields kept');
+ok(items[3].ratePct === 2.35 && items[3].limit === 200000000 && items[4].dest === 'vendor' && items[4].priceLow === 0, 'loan rate rounded, unknown destination becomes a vendor');
+ok(db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE action = 'ai_parse'").get().n === 1, 'each parse is logged (count only)');
+env.AI = { run: async () => ({ response: '```json\n{"items":[{"dest":"honsu","nameKo":"냉장고","nameEn":"Fridge","priceLow":2500000,"summaryKo":"","summaryEn":""}]}\n```' }) };
+r = await call('/api/ai/parse', { method: 'POST', sid: duyeon, plan: P1, body: { text: '냉장고 250만' } });
+ok(r.status === 200 && r.data.items[0].dest === 'honsu', 'JSON written as text is read too');
+env.AI = { run: async () => { throw new Error('3036: daily free allocation exceeded'); } };
+ok((await call('/api/ai/parse', { method: 'POST', sid: duyeon, plan: P1, body: { text: 'x' } })).data.error === 'ai_quota', 'used-up daily allocation is reported');
+env.AI_DAILY_LIMIT = '3'; // three parses so far today
+ok((await call('/api/ai/parse', { method: 'POST', sid: duyeon, plan: P1, body: { text: 'x' } })).data.error === 'ai_daily_limit', 'per-plan daily limit');
+delete env.AI_DAILY_LIMIT; delete env.AI;
+db.prepare("DELETE FROM rate_events WHERE bucket LIKE 'ai:%'").run();
+ok((await call('/api/ai/parse', { method: 'POST', sid: duyeon, plan: P1, body: { text: 'x' } })).status === 503, 'no AI binding: clear error');
+
 // ---- import is the paid add-on; export is free ----
 ok((await call('/api/export', { sid: eve, plan: P2 })).status === 200, 'export is free for any member (개인정보보호법 제35조)');
 r = await call('/api/doc/guests', { method: 'PUT', sid: eve, plan: P2, body: { value: [{ id: 'x' }], baseVersion: 1, action: 'import' } });

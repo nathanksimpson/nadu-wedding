@@ -18,6 +18,8 @@
   //   TURNSTILE_SECRET, RESEND_API_KEY, MAIL_FROM
   // Plain settings that can be set in the dashboard instead of here: PRIVACY_OFFICER, PRIVACY_EMAIL, CONTACT_EMAIL, TURNSTILE_SITEKEY
   "vars": { "APP_ENV": "production", "TRIAL_DAYS": "14", "SIGNUP_OPEN": "true" },
+  // Workers AI for the quote/offer parser (AI add-on). Optional vars: AI_MODEL, AI_DAILY_LIMIT (parses per plan per day).
+  "ai": { "binding": "AI" },
   // Read limits per account / per IP (requests per minute).
   "ratelimits": [
     { "name": "READ_LIMITER", "namespace_id": "4101", "simple": { "limit": 180, "period": 60 } },
@@ -34,6 +36,7 @@
         { "binding": "DB", "database_name": "nadu-wedding-staging-db", "database_id": "d7b83cb3-f838-4281-abbc-d01651bee1f7" }
       ],
       "vars": { "APP_ENV": "staging", "TRIAL_DAYS": "14", "SIGNUP_OPEN": "false" },
+      "ai": { "binding": "AI" },
       "ratelimits": [
         { "name": "READ_LIMITER", "namespace_id": "4201", "simple": { "limit": 180, "period": 60 } },
         { "name": "FILE_LIMITER", "namespace_id": "4202", "simple": { "limit": 900, "period": 60 } }

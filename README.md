@@ -61,6 +61,22 @@ See `docs/privacy-security-plan.md` (checklist), `docs/internal-management-plan.
   no framing, no-referrer leaks.
 - **ID numbers:** saving a resident/foreigner registration number is refused; card numbers get a warning.
 
+## Quote & offer parser (AI add-on)
+
+The **견적 붙여넣기 / Paste a quote** button opens a panel where a couple pastes a vendor quote or promo as text,
+pastes a screenshot (Ctrl/⌘+V), or drops an image. `POST /api/ai/parse` sends it to **Cloudflare Workers AI**
+(`AI` binding in `wrangler.jsonc`, model `@cf/google/gemma-4-26b-a4b-it`: vision, Korean, tool calling, available on
+the free plan) and returns items for 스드메 listings, venues, vendor comparison, loans or 혼수. The couple checks
+them and only the ticked ones are added (merged: nothing already in the plan is changed). Code: `src/ai.js`
+(prompt, schema, cleaning) and `public/parse.js` (panel, image shrinking, `applyItems`).
+
+- Needs the plan's **AI add-on** (admins always have it) and edit access. ID numbers in pasted text are refused.
+- Nothing from the request is stored; the access log records `ai_parse` with the item count only.
+- Cost: about 70 Neurons per parse, so the free 10,000 Neurons/day covers roughly 140 parses a day across the site.
+  `AI_DAILY_LIMIT` (var, default 30) caps parses per plan per day; `AI_MODEL` swaps the model.
+- The GitHub Actions `CLOUDFLARE_API_TOKEN` needs the **Workers AI** permission (Account → Workers AI → Read)
+  to deploy a Worker with an `AI` binding.
+
 ## Environments
 
 | | Worker | Database | Deployed by |

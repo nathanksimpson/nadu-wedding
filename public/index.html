@@ -428,6 +428,7 @@ body.gated .wrap { visibility: hidden; }
       <div class="seg" role="group" aria-label="Theme"><button type="button" id="skin-std" data-t="skinStd"></button><button type="button" id="skin-bright" data-t="skinBright"></button></div>
       <select id="lang-select" class="lang-select" aria-label="Language · 언어"></select>
       <button id="btn-report" type="button" class="primary" data-t="report"></button>
+      <button id="btn-parse" type="button" data-t="parse"></button>
       <button id="btn-io" type="button" data-t="io"></button>
       <button id="btn-reset" type="button" class="danger" data-t="reset"></button>
     </div>
@@ -461,6 +462,8 @@ body.gated .wrap { visibility: hidden; }
     <input id="io-file" type="file" accept=".json,application/json">
     </div>
   </section>
+
+  <section class="panel app" id="parse" hidden aria-live="polite"></section>
 
   <div class="tabpanel app" data-panel="dash">
     <section id="dash" class="app">
@@ -693,6 +696,7 @@ body.gated .wrap { visibility: hidden; }
 <footer class="site-foot"><a href="/privacy.html" target="_blank" rel="noopener" data-t="footPrivacy"></a> · <span data-t="footSecurity"></span></footer>
 <script src="/dropzone.js"></script>
 <script src="/sdm.js"></script>
+<script src="/parse.js"></script>
 <script src="/app.js"></script>
 </body>
 </html>

@@ -16,6 +16,7 @@ import {
   sealText, openText, keyStatus, isEncrypted, keyIdOf, currentKey, sealBackup, newTotpSecret, totpOk, otpauthUri, weakPassword,
   findRrn, findCard, audit, verifyAudit, botVerdict, ROBOTS_TXT, withSecurityHeaders
 } from './security.js';
+import { parseQuote, IMAGE_TYPES, MAX_TEXT, MAX_IMAGE_B64 } from './ai.js';
 
 const SHARED_KEYS = new Set([
   'budget', 'selectedVenue', 'selectedLoan', 'venues', 'nonVenue', 'afterCosts', 'honsu', 'categories', 'loans', 'seeded',
@@ -760,8 +761,36 @@ async function adminNotifyList(req, env, url, adminId) {
   return json({ emails: results });
 }
 
-// ---------- AI add-on gate (the AI endpoints themselves come with the quote importer) ----------
+// ---------- AI add-on: gate and quote/offer parser (see src/ai.js) ----------
 async function aiStatus(ctx) { return json({ allowed: ctx.view.ai, access: ctx.view.access }); }
+// Each plan gets AI_DAILY_LIMIT parses per day (default 30), so one couple can't use up the account's daily
+// free Workers AI allocation. Nothing from the request is stored; the access log records only the count.
+async function aiParse(req, env, ctx) {
+  if (!ctx.view.ai) return err(402, 'addon_required', { addon: 'ai' });
+  if (!ctx.view.writable) return readOnly(ctx);
+  const b = await readBody(req);
+  if (!b) return err(400, 'bad_request');
+  const text = String(b.text || '').slice(0, MAX_TEXT).trim();
+  let image = null;
+  if (b.image) {
+    const mime = String(b.image.mime || '').toLowerCase(), data = String(b.image.data || '');
+    if (!IMAGE_TYPES.includes(mime) || !/^[A-Za-z0-9+/]+=*$/.test(data)) return err(400, 'bad_image');
+    if (data.length > MAX_IMAGE_B64) return err(413, 'image_too_large');
+    image = { mime, data };
+  }
+  if (!text && !image) return err(400, 'nothing_to_read');
+  // Resident/foreigner registration numbers are never processed (개인정보보호법 제24조의2).
+  if (findRrn(text)) return err(400, 'id_number');
+  const bucket = 'ai:' + ctx.plan.id, perDay = Number(env.AI_DAILY_LIMIT || 30);
+  if (await overLimit(env, bucket, perDay, DAY)) return err(429, 'ai_daily_limit', { limit: perDay });
+  await hit(env, bucket);
+  const r = await parseQuote(env, { text, image });
+  if (r.error) return err(r.error === 'ai_not_configured' ? 503 : r.error === 'ai_unavailable' ? 502 : 429, r.error);
+  // Anything that looks like an ID number in what the model read is dropped before it reaches the browser.
+  const items = r.items.filter((it) => !findRrn(JSON.stringify(it)));
+  await audit(env, req, { userId: ctx.userId, planId: ctx.plan.id, action: 'ai_parse', detail: `${items.length} items${image ? ' · image' : ''}` });
+  return json({ items, unreadable: !items.length });
+}
 
 // ---------- router ----------
 async function api(req, env, url) {
@@ -829,6 +858,7 @@ async function api(req, env, url) {
   if (p === '/api/plan/invites' && m === 'POST') return createInvite(req, env, ctx, url);
   if (p === '/api/plan/invites/revoke' && m === 'POST') return revokeInvite(req, env, ctx);
   if (p === '/api/ai/status' && m === 'GET') return aiStatus(ctx);
+  if (p === '/api/ai/parse' && m === 'POST') return aiParse(req, env, ctx);
   if (p === '/api/state' && m === 'GET') return json(await getState(env, ctx));
   if (p === '/api/changes' && m === 'GET') return changes(env, ctx, url);
   if (p === '/api/history' && m === 'GET') return history(env, ctx, url);
