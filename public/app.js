@@ -2242,6 +2242,11 @@
     psFound: (n) => `${n}개 항목을 찾았어요`, psCheck: '이름, 가격, 넣을 곳을 확인하고 필요 없는 항목은 체크를 빼세요. 가격은 할인 적용 금액이에요.',
     psName: '이름', psPrice: '가격 (원)', psWhere: '넣을 곳', psKind: '분류', psKeep: '추가하기', psCond: '조건',
     psUpTo: (x) => `옵션 포함 최대 ₩${x}`, psList: (x) => `정가 ₩${x}`, psMeal: (x) => `식대 1인 ₩${x}`,
+    psHow: 'AI가 읽은 방법', psFood: '식대 1인', psGuests: '보증 인원', psFixed: '고정 비용',
+    psTotalOk: (f, g, x, c, t) => `식대 ${f} × ${g}명 + 고정 비용 ${x} = ${c}` + (t ? ' · 견적 합계와 같아요 ✓' : ''),
+    psTotalOff: (f, g, x, c, t) => `식대 ${f} × ${g}명 + 고정 비용 ${x} = ${c} · 견적 합계 ${t}와 달라요. 숫자를 확인해 주세요.`,
+    psExtras: '추가금', psLikely: '대부분 내요', psReal: (x) => `추가금 포함 예상 ${x}`, psBon: (x) => `본식만 ₩${x}`, psPkg: '패키지 (드레스·메이크업 포함)',
+    psIncl: '포함(무료)', psPerks: '특전', psOpts: '선택 옵션(별도)', psPerUse: '사용량 결제', psDeposit: '예약금', psDate: '예식 시기',
     psAdd: '선택한 항목 추가', psNoneChosen: '추가할 항목을 골라 주세요.', psAdded: (list) => `추가했어요: ${list}`,
     psDest: { sdm: '스드메 업체 목록', venue: '예식장 옵션', vendor: '업체 비교', loan: '대출 옵션', honsu: '혼수' },
     psSdmCat: { studios: '스튜디오', dresses: '드레스', tux: '턱시도', makeup: '헤어·메이크업', hair: '헤어변형' },
@@ -2259,6 +2264,11 @@
     psFound: (n) => `Found ${n} item${n === 1 ? '' : 's'}`, psCheck: 'Check the name, price and where each goes, and untick anything you don’t want. Prices are the offer price.',
     psName: 'Name', psPrice: 'Price (₩)', psWhere: 'Add to', psKind: 'Category', psKeep: 'Add this', psCond: 'Conditions',
     psUpTo: (x) => `up to ₩${x} with options`, psList: (x) => `regular price ₩${x}`, psMeal: (x) => `meals ₩${x} per guest`,
+    psHow: 'How AI read it', psFood: 'Meal per guest', psGuests: 'Guaranteed guests', psFixed: 'Fixed costs',
+    psTotalOk: (f, g, x, c, t) => `Meals ${f} × ${g} + fixed ${x} = ${c}` + (t ? ' · matches the quote total ✓' : ''),
+    psTotalOff: (f, g, x, c, t) => `Meals ${f} × ${g} + fixed ${x} = ${c} · the quote says ${t}. Check the numbers.`,
+    psExtras: 'Extra fees', psLikely: 'most couples pay', psReal: (x) => `Likely cost with extras ${x}`, psBon: (x) => `ceremony only ₩${x}`, psPkg: 'Package (dress & makeup included)',
+    psIncl: 'Included (free)', psPerks: 'Perks', psOpts: 'Optional extras', psPerUse: 'Pay per use', psDeposit: 'Deposit', psDate: 'Wedding date',
     psAdd: 'Add selected items', psNoneChosen: 'Choose at least one item to add.', psAdded: (list) => `Added: ${list}`,
     psDest: { sdm: '스드메 listings', venue: 'Venue options', vendor: 'Vendor comparison', loan: 'Loan options', honsu: '혼수 (home items)' },
     psSdmCat: { studios: 'Studio', dresses: 'Dress', tux: 'Tuxedo', makeup: 'Hair & makeup', hair: 'Hair change' },
@@ -2271,8 +2281,8 @@
     window.NaduParse.render(host, {
       T, lang: S.lang, allowed: !!(Sync.plan && Sync.plan.ai), writable, api, toast,
       catOpts: BCATS.map((c) => [c[0], cname(c[0])]), sdmCatLabel: (k) => T('psSdmCat')[k], destLabel: (k) => T('psDest')[k],
-      apply: (items) => {
-        const r = window.NaduParse.applyItems({ sdmCatalog: S.sdmCatalog, venues: S.venues, vendors: S.vendors, loans: S.loans, honsu: S.honsu }, items, S.lang);
+      apply: (items, labels) => {
+        const r = window.NaduParse.applyItems({ sdmCatalog: S.sdmCatalog, venues: S.venues, vendors: S.vendors, loans: S.loans, honsu: S.honsu }, items, S.lang, labels);
         Object.assign(S, r.state); save(); renderAll(); renderHonsu(); renderVendors(); prepSums(); if (S.tab === 'sdm') renderSdm();
         return r.counts;
       }

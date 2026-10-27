@@ -763,7 +763,7 @@ async function adminNotifyList(req, env, url, adminId) {
 
 // ---------- AI add-on: gate and quote/offer parser (see src/ai.js) ----------
 async function aiStatus(ctx) { return json({ allowed: ctx.view.ai, access: ctx.view.access }); }
-// Each plan gets AI_DAILY_LIMIT parses per day (default 30), so one couple can't use up the account's daily
+// Each plan gets AI_DAILY_LIMIT parses per day (default 20), so one couple can't use up the account's daily
 // free Workers AI allocation. Nothing from the request is stored; the access log records only the count.
 async function aiParse(req, env, ctx) {
   if (!ctx.view.ai) return err(402, 'addon_required', { addon: 'ai' });
@@ -781,7 +781,7 @@ async function aiParse(req, env, ctx) {
   if (!text && !image) return err(400, 'nothing_to_read');
   // Resident/foreigner registration numbers are never processed (개인정보보호법 제24조의2).
   if (findRrn(text)) return err(400, 'id_number');
-  const bucket = 'ai:' + ctx.plan.id, perDay = Number(env.AI_DAILY_LIMIT || 30);
+  const bucket = 'ai:' + ctx.plan.id, perDay = Number(env.AI_DAILY_LIMIT || 20);
   if (await overLimit(env, bucket, perDay, DAY)) return err(429, 'ai_daily_limit', { limit: perDay });
   await hit(env, bucket);
   const r = await parseQuote(env, { text, image });
