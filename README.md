@@ -61,33 +61,6 @@ See `docs/privacy-security-plan.md` (checklist), `docs/internal-management-plan.
   no framing, no-referrer leaks.
 - **ID numbers:** saving a resident/foreigner registration number is refused; card numbers get a warning.
 
-## Quote & offer parser (AI add-on)
-
-The **견적 붙여넣기 / Paste a quote** button opens a panel where a couple pastes a vendor quote or promo as text,
-pastes a screenshot (Ctrl/⌘+V), or drops an image. `POST /api/ai/parse` sends it to **Cloudflare Workers AI**
-(`AI` binding in `wrangler.jsonc`, model `@cf/google/gemma-4-26b-a4b-it`: vision, Korean, tool calling, available on
-the free plan) and returns items for 스드메 listings, venues, vendor comparison, loans or 혼수. The couple checks
-them and only the ticked ones are added (merged: nothing already in the plan is changed). Code: `src/ai.js`
-(prompt, schema, cleaning) and `public/parse.js` (panel, image shrinking, `applyItems`).
-
-- Needs the plan's **AI add-on** (admins always have it) and edit access. ID numbers in pasted text are refused.
-- Nothing from the request is stored; the access log records `ai_parse` with the item count only.
-- Cost: about 170 Neurons per read (long prompt + thinking), so the free 10,000 Neurons/day covers roughly 60 reads
-  a day across the site. `AI_DAILY_LIMIT` (var, default 20) caps reads per plan per day; `AI_MODEL` swaps the model;
-  `AI_THINKING=off` skips step-by-step reading (cheaper, less accurate on dense tables).
-- **How it reads quotes** (the prompt in `src/ai.js`): offer column over list price, handwriting over print, crossed-out
-  rows dropped, FREE → included, blank offer cells → optional extras, 사용량 drinks → pay-per-use, meals as price × guaranteed
-  guests (never also a fixed line). 스드메: package vs separate shops, 촬영+본식 vs 본식만, one card per makeup artist level,
-  and 추가금 split into likely (원본, 헬퍼, 피팅비…) and upgrades; likely ones raise the card's upper price. After the model,
-  `cleanItems` repairs common slips (meal total repeated as a line, FREE items at ₩0) and checks venue arithmetic
-  against the quote's total; a mismatch is shown in red before anything is added.
-- **Trying prompt changes on real quotes:** put them in `evals/` (git-ignored: they hold names, phone and account numbers)
-  and run `CLOUDFLARE_ACCOUNT_ID=… CLOUDFLARE_API_TOKEN=… node scripts/ai-eval.mjs evals/*.jpg`. Add
-  `evals/<name>.expect.json` with the numbers that must come out (e.g. `{"dest":"venue","foodPerPerson":150000,"minGuests":150,"quoteTotal":26000000}`)
-  to get a pass/fail. The token needs Workers AI permission.
-- The GitHub Actions `CLOUDFLARE_API_TOKEN` needs the **Workers AI** permission (Account → Workers AI → Read)
-  to deploy a Worker with an `AI` binding.
-
 ## Environments
 
 | | Worker | Database | Deployed by |

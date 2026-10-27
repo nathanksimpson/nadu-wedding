@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
-    "test": "node --experimental-sqlite test/worker.test.mjs && node --experimental-sqlite test/migration.test.mjs && node test/ai.test.mjs && node scripts/i18n-check.mjs",
+    "test": "node --experimental-sqlite test/worker.test.mjs && node --experimental-sqlite test/migration.test.mjs && node scripts/i18n-check.mjs",
     "deploy": "wrangler deploy",
     "deploy:staging": "wrangler deploy --env staging",
     "schema": "wrangler d1 execute nadu-wedding-db --remote --file=./schema.sql",

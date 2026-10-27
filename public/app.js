@@ -2230,68 +2230,6 @@
     box.append(el('div', { class: 'panel' }, el('h3', { text: T('ntTitle') }), el('p', { class: 'small', text: T('ntHelp') }), el('div', { class: 'row-btns' }, nb)));
   }
 
-  // ---------- quote & offer parser (AI add-on, see parse.js) ----------
-  Object.assign(L.ko, {
-    parse: '견적 붙여넣기', psTitle: '견적·혜택 붙여넣기',
-    psHelp: '업체 견적서, 카페 혜택 글, 카톡 안내를 글로 붙여넣거나 캡처 화면을 붙여넣으세요(Ctrl/⌘+V). AI가 읽고 스드메·예식장·업체 비교·대출·혼수 중 맞는 곳에 넣을 항목을 보여 줘요. 확인한 항목만 추가돼요.',
-    psLocked: 'AI 견적 읽기는 유료 부가 서비스(AI)예요. 관리자에게 문의하세요.', psReadOnly: '보기 전용 멤버는 항목을 추가할 수 없어요.',
-    psPh: '여기에 견적이나 혜택 글을 붙여넣으세요. 캡처 화면도 여기서 Ctrl/⌘+V 하면 돼요.',
-    psDrop: '캡처 이미지를 여기로 끌어다 놓거나 눌러서 고르세요', psDropHint: 'PNG, JPG, WEBP', psImage: '붙여넣은 이미지', psRemoveImage: '이미지 빼기', psBadImage: '이미지를 열 수 없어요.',
-    psPrivacy: '읽는 동안에만 Cloudflare AI로 보내고 저장하지 않아요. 연락처나 주민등록번호가 보이면 가리고 붙여넣어 주세요.',
-    psRead: 'AI로 읽기', psReading: '읽는 중…', psClear: '지우기', psEmpty: '글이나 이미지를 먼저 넣어 주세요.', psNothing: '견적이나 혜택을 찾지 못했어요. 더 선명한 캡처나 글로 다시 해 보세요.',
-    psFound: (n) => `${n}개 항목을 찾았어요`, psCheck: '이름, 가격, 넣을 곳을 확인하고 필요 없는 항목은 체크를 빼세요. 가격은 할인 적용 금액이에요.',
-    psName: '이름', psPrice: '가격 (원)', psWhere: '넣을 곳', psKind: '분류', psKeep: '추가하기', psCond: '조건',
-    psUpTo: (x) => `옵션 포함 최대 ₩${x}`, psList: (x) => `정가 ₩${x}`, psMeal: (x) => `식대 1인 ₩${x}`,
-    psHow: 'AI가 읽은 방법', psFood: '식대 1인', psGuests: '보증 인원', psFixed: '고정 비용',
-    psTotalOk: (f, g, x, c, t) => `식대 ${f} × ${g}명 + 고정 비용 ${x} = ${c}` + (t ? ' · 견적 합계와 같아요 ✓' : ''),
-    psTotalOff: (f, g, x, c, t) => `식대 ${f} × ${g}명 + 고정 비용 ${x} = ${c} · 견적 합계 ${t}와 달라요. 숫자를 확인해 주세요.`,
-    psExtras: '추가금', psLikely: '대부분 내요', psReal: (x) => `추가금 포함 예상 ${x}`, psBon: (x) => `본식만 ₩${x}`, psPkg: '패키지 (드레스·메이크업 포함)',
-    psIncl: '포함(무료)', psPerks: '특전', psOpts: '선택 옵션(별도)', psPerUse: '사용량 결제', psDeposit: '예약금', psDate: '예식 시기',
-    psAdd: '선택한 항목 추가', psNoneChosen: '추가할 항목을 골라 주세요.', psAdded: (list) => `추가했어요: ${list}`,
-    psDest: { sdm: '스드메 업체 목록', venue: '예식장 옵션', vendor: '업체 비교', loan: '대출 옵션', honsu: '혼수' },
-    psSdmCat: { studios: '스튜디오', dresses: '드레스', tux: '턱시도', makeup: '헤어·메이크업', hair: '헤어변형' },
-    psErrGeneric: 'AI가 지금 응답하지 않아요. 잠시 후 다시 해 주세요.',
-    psErr: { addon_required: 'AI 부가 서비스가 필요해요.', id_number: '주민등록번호 같은 고유식별번호가 있어요. 지우고 다시 해 주세요.', bad_image: 'PNG, JPG, WEBP 이미지만 읽을 수 있어요.', image_too_large: '이미지가 너무 커요. 화면 일부만 캡처해 주세요.', nothing_to_read: '글이나 이미지를 먼저 넣어 주세요.', ai_daily_limit: '오늘 쓸 수 있는 AI 읽기 횟수를 다 썼어요. 내일 다시 해 주세요.', ai_quota: '오늘 사이트 전체 AI 사용량이 다 찼어요. 내일 다시 해 주세요.', ai_busy: 'AI가 바빠요. 잠시 후 다시 해 주세요.', ai_unavailable: 'AI가 읽지 못했어요. 다시 해 보거나 글로 붙여넣어 주세요.', ai_not_configured: 'AI 연결이 아직 설정되지 않았어요. 관리자에게 알려 주세요.', read_only: '보기 전용이라 추가할 수 없어요.', plan_expired: '이용 기간이 끝나 추가할 수 없어요.' }
-  });
-  Object.assign(L.en, {
-    parse: 'Paste a quote', psTitle: 'Paste a quote or offer',
-    psHelp: 'Paste a vendor quote, a cafe promo post or a KakaoTalk message as text, or paste a screenshot (Ctrl/⌘+V). AI reads it and shows items for the right place: 스드메, venues, vendor comparison, loans or 혼수. Only the items you confirm are added.',
-    psLocked: 'Reading quotes with AI is part of the paid AI add-on. Ask the site admin.', psReadOnly: 'View-only members cannot add items.',
-    psPh: 'Paste a quote or offer here. Screenshots can be pasted here too with Ctrl/⌘+V.',
-    psDrop: 'Drop a screenshot here, or click to choose one', psDropHint: 'PNG, JPG, WEBP', psImage: 'Pasted image', psRemoveImage: 'Remove image', psBadImage: 'That image could not be opened.',
-    psPrivacy: 'Sent to Cloudflare AI only while it is read, and not stored. Cover phone numbers or ID numbers before pasting.',
-    psRead: 'Read with AI', psReading: 'Reading…', psClear: 'Clear', psEmpty: 'Add some text or an image first.', psNothing: 'No quote or offer found. Try a sharper screenshot, or paste the text.',
-    psFound: (n) => `Found ${n} item${n === 1 ? '' : 's'}`, psCheck: 'Check the name, price and where each goes, and untick anything you don’t want. Prices are the offer price.',
-    psName: 'Name', psPrice: 'Price (₩)', psWhere: 'Add to', psKind: 'Category', psKeep: 'Add this', psCond: 'Conditions',
-    psUpTo: (x) => `up to ₩${x} with options`, psList: (x) => `regular price ₩${x}`, psMeal: (x) => `meals ₩${x} per guest`,
-    psHow: 'How AI read it', psFood: 'Meal per guest', psGuests: 'Guaranteed guests', psFixed: 'Fixed costs',
-    psTotalOk: (f, g, x, c, t) => `Meals ${f} × ${g} + fixed ${x} = ${c}` + (t ? ' · matches the quote total ✓' : ''),
-    psTotalOff: (f, g, x, c, t) => `Meals ${f} × ${g} + fixed ${x} = ${c} · the quote says ${t}. Check the numbers.`,
-    psExtras: 'Extra fees', psLikely: 'most couples pay', psReal: (x) => `Likely cost with extras ${x}`, psBon: (x) => `ceremony only ₩${x}`, psPkg: 'Package (dress & makeup included)',
-    psIncl: 'Included (free)', psPerks: 'Perks', psOpts: 'Optional extras', psPerUse: 'Pay per use', psDeposit: 'Deposit', psDate: 'Wedding date',
-    psAdd: 'Add selected items', psNoneChosen: 'Choose at least one item to add.', psAdded: (list) => `Added: ${list}`,
-    psDest: { sdm: '스드메 listings', venue: 'Venue options', vendor: 'Vendor comparison', loan: 'Loan options', honsu: '혼수 (home items)' },
-    psSdmCat: { studios: 'Studio', dresses: 'Dress', tux: 'Tuxedo', makeup: 'Hair & makeup', hair: 'Hair change' },
-    psErrGeneric: 'The AI is not responding right now. Try again in a moment.',
-    psErr: { addon_required: 'This needs the AI add-on.', id_number: 'There is an ID number in the text. Remove it and try again.', bad_image: 'Only PNG, JPG or WEBP images can be read.', image_too_large: 'That image is too large. Capture a smaller part of the screen.', nothing_to_read: 'Add some text or an image first.', ai_daily_limit: 'You have used today’s AI reads for this plan. Try again tomorrow.', ai_quota: 'The site’s AI allowance for today is used up. Try again tomorrow.', ai_busy: 'The AI is busy. Try again in a moment.', ai_unavailable: 'The AI could not read that. Try again, or paste the text instead.', ai_not_configured: 'AI is not set up on this site yet. Let the admin know.', read_only: 'View-only, so nothing can be added.', plan_expired: 'Your plan has ended, so nothing can be added.' }
-  });
-  function renderParse() {
-    const host = $('parse'); if (!host || host.hidden) return;
-    const writable = !!(Sync.plan && Sync.plan.writable);
-    window.NaduParse.render(host, {
-      T, lang: S.lang, allowed: !!(Sync.plan && Sync.plan.ai), writable, api, toast,
-      catOpts: BCATS.map((c) => [c[0], cname(c[0])]), sdmCatLabel: (k) => T('psSdmCat')[k], destLabel: (k) => T('psDest')[k],
-      apply: (items, labels) => {
-        const r = window.NaduParse.applyItems({ sdmCatalog: S.sdmCatalog, venues: S.venues, vendors: S.vendors, loans: S.loans, honsu: S.honsu }, items, S.lang, labels);
-        Object.assign(S, r.state); save(); renderAll(); renderHonsu(); renderVendors(); prepSums(); if (S.tab === 'sdm') renderSdm();
-        return r.counts;
-      }
-    });
-  }
-  $('btn-parse').addEventListener('click', () => { const p = $('parse'); p.hidden = !p.hidden; if (!p.hidden) { renderParse(); p.scrollIntoView({ behavior: 'smooth', block: 'start' }); } });
-
-  function renderAll() { ensurePrep(); applyLang(); renderTabs(); renderIoLock(); setupFolds(); renderBudget(); renderExtras(); renderVenues(); renderShared(); renderLoans(); if (forms.lang !== S.lang) renderPrepForms(); renderSearchRows(); renderRatio(); renderExportButtons(); compute(); renderHeader(); renderPresence(); renderPlanBar(); applyTab(); applyReadonly(); const pk = [S.lang, Sync.planId, Sync.plan && Sync.plan.ai, Sync.plan && Sync.plan.writable].join('|'); if (parseKey !== pk) { parseKey = pk; renderParse(); } }
-  // The parse panel only redraws when language or access changes, so a partner's edit never wipes what's being typed.
-  let parseKey = '';
+  function renderAll() { ensurePrep(); applyLang(); renderTabs(); renderIoLock(); setupFolds(); renderBudget(); renderExtras(); renderVenues(); renderShared(); renderLoans(); if (forms.lang !== S.lang) renderPrepForms(); renderSearchRows(); renderRatio(); renderExportButtons(); compute(); renderHeader(); renderPresence(); renderPlanBar(); applyTab(); applyReadonly(); }
   boot();
 })();

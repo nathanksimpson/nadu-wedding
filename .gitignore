@@ -1,6 +1,3 @@
 node_modules
 .wrangler
 .dev.vars
-
-# Real quotes for scripts/ai-eval.mjs (names, phone and account numbers): never commit
-evals/
