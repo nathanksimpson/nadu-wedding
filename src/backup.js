@@ -53,15 +53,3 @@ export async function buildSqlBackup(db, { appName = 'nadu-wedding', env = 'prod
   out.push('', `-- rows: ${JSON.stringify(counts)}`, '');
   return { sql: out.join('\n'), counts };
 }
-
-export function backupResponse(sql, env = 'production') {
-  const stamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 13).replace('T', '-');
-  const name = `nadu-wedding-${env}-backup-${stamp}.sql`;
-  return new Response(sql, {
-    headers: {
-      'content-type': 'application/sql; charset=utf-8',
-      'content-disposition': `attachment; filename="${name}"`,
-      'cache-control': 'no-store'
-    }
-  });
-}

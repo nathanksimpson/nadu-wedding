@@ -11,9 +11,9 @@
 // Privacy & security (docs/privacy-security-plan.md): encryption at rest (DATA_KEY), audit log, admin two-step
 // login and idle timeout, ID-number refusal, read rate limits, bot blocking, security headers, retention job.
 
-import { buildSqlBackup, backupResponse } from './backup.js';
+import { buildSqlBackup } from './backup.js';
 import {
-  sealText, openText, keyStatus, isEncrypted, keyIdOf, currentKey, sealBackup, newTotpSecret, totpOk, otpauthUri, weakPassword,
+  sealText, openText, keyStatus, currentKey, b64, unb64, sealBackup, newTotpSecret, totpOk, otpauthUri, weakPassword,
   findRrn, findCard, audit, verifyAudit, botVerdict, ROBOTS_TXT, withSecurityHeaders
 } from './security.js';
 
@@ -54,6 +54,13 @@ async function hashPassword(password, saltHex) {
   const bits = await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations: PBKDF2_ITER }, key, 256);
   return hex(bits);
 }
+// Stored as PBKDF2(password, salt). newPasswordHash gives the two columns for a new password;
+// passwordMatches checks a typed password against a user row that has pw_hash and pw_salt.
+async function newPasswordHash(password) {
+  const salt = randHex(16);
+  return { pw: await hashPassword(String(password), salt), salt };
+}
+const passwordMatches = async (u, password) => !!u && safeEqual(await hashPassword(String(password || ''), u.pw_salt), u.pw_hash);
 function safeEqual(a, b) {
   if (a.length !== b.length) return false;
   let r = 0; for (let i = 0; i < a.length; i++) r |= a.charCodeAt(i) ^ b.charCodeAt(i);
@@ -232,7 +239,7 @@ async function signup(req, env) {
   if (exists) return err(409, 'email_taken');
   // The very first account on an empty site becomes its admin.
   const { n: admins } = await env.DB.prepare('SELECT COUNT(*) AS n FROM users WHERE is_admin = 1').first();
-  const salt = randHex(16), pw = await hashPassword(password, salt);
+  const { pw, salt } = await newPasswordHash(password);
   const r = await env.DB.prepare('INSERT INTO users (username, display, pw_hash, pw_salt, created_at, email, is_admin) VALUES (?, ?, ?, ?, ?, ?, ?)')
     .bind(email, display, pw, salt, nowIso(), email, admins ? 0 : 1).run();
   await audit(env, req, { userId: r.meta.last_row_id, action: 'signup', target: email, detail: admins ? '' : 'first account: admin' });
@@ -248,7 +255,7 @@ async function login(req, env) {
   if (n >= LOGIN_MAX_FAILS) return err(429, 'too_many_attempts', { retryMinutes: Math.max(1, Math.ceil((first + LOGIN_LOCK_MS - Date.now()) / 60_000)) });
   if (!(await turnstileOk(env, b.turnstile, clientIp(req)))) return err(403, 'bot_check_failed');
   const u = await env.DB.prepare('SELECT id, pw_hash, pw_salt, totp_enabled, totp_secret FROM users WHERE email = ? OR username = ?').bind(id, id).first();
-  const ok = u && safeEqual(await hashPassword(password, u.pw_salt), u.pw_hash);
+  const ok = await passwordMatches(u, password);
   const fail = async (code, why) => {
     await env.DB.prepare('INSERT INTO login_attempts (username, at) VALUES (?, ?)').bind(id, Date.now()).run();
     await audit(env, req, { userId: u ? u.id : null, action: 'login_fail', target: id, detail: why });
@@ -294,7 +301,7 @@ async function reset(req, env) {
   const r = await env.DB.prepare('SELECT p.user_id, u.email FROM password_resets p JOIN users u ON u.id = p.user_id WHERE p.token_hash = ? AND p.expires_at > ?').bind(th, Date.now()).first();
   if (!r) return err(400, 'bad_reset_link');
   const weak = weakPassword(password, r.email); if (weak) return err(400, weak);
-  const salt = randHex(16), pw = await hashPassword(password, salt);
+  const { pw, salt } = await newPasswordHash(password);
   await env.DB.batch([
     env.DB.prepare('UPDATE users SET pw_hash = ?, pw_salt = ? WHERE id = ?').bind(pw, salt, r.user_id),
     env.DB.prepare('DELETE FROM password_resets WHERE user_id = ?').bind(r.user_id),
@@ -319,9 +326,9 @@ async function updateAccount(req, env, user) {
   }
   if (b.newPassword !== undefined) {
     const u = await env.DB.prepare('SELECT pw_hash, pw_salt FROM users WHERE id = ?').bind(user.id).first();
-    if (!safeEqual(await hashPassword(String(b.password || ''), u.pw_salt), u.pw_hash)) return err(403, 'bad_password');
+    if (!(await passwordMatches(u, b.password))) return err(403, 'bad_password');
     const weak = weakPassword(String(b.newPassword), user.email); if (weak) return err(400, weak);
-    const salt = randHex(16); sets.push('pw_hash = ?', 'pw_salt = ?'); args.push(await hashPassword(String(b.newPassword), salt), salt);
+    const { pw, salt } = await newPasswordHash(b.newPassword); sets.push('pw_hash = ?', 'pw_salt = ?'); args.push(pw, salt);
   }
   if (!sets.length) return json({ ok: true });
   await env.DB.prepare(`UPDATE users SET ${sets.join(', ')} WHERE id = ?`).bind(...args, user.id).run();
@@ -332,7 +339,7 @@ async function updateAccount(req, env, user) {
 async function twoStep(req, env, user, step) {
   const b = await readBody(req) || {};
   const u = await env.DB.prepare('SELECT pw_hash, pw_salt, totp_secret, totp_pending, totp_enabled FROM users WHERE id = ?').bind(user.id).first();
-  const pwOk = async () => safeEqual(await hashPassword(String(b.password || ''), u.pw_salt), u.pw_hash);
+  const pwOk = () => passwordMatches(u, b.password);
   if (step === 'setup') {
     if (!(await pwOk())) return err(403, 'bad_password');
     const secret = newTotpSecret();
@@ -367,7 +374,7 @@ async function twoStep(req, env, user, step) {
 async function deleteAccount(req, env, user) {
   const b = await readBody(req);
   const u = await env.DB.prepare('SELECT pw_hash, pw_salt FROM users WHERE id = ?').bind(user.id).first();
-  if (!safeEqual(await hashPassword(String(b && b.password || ''), u.pw_salt), u.pw_hash)) return err(403, 'bad_password');
+  if (!(await passwordMatches(u, b && b.password))) return err(403, 'bad_password');
   const { results } = await env.DB.prepare('SELECT plan_id, role FROM plan_members WHERE user_id = ?').bind(user.id).all();
   for (const m of results) {
     const { n } = await env.DB.prepare('SELECT COUNT(*) AS n FROM plan_members WHERE plan_id = ? AND user_id != ?').bind(m.plan_id, user.id).first();
@@ -538,13 +545,11 @@ async function putDoc(req, env, ctx, key) {
 const FILE_NAME = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 const FILE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 const MAX_FILE_BYTES = 700_000, MAX_PLAN_FILES = 400, MAX_PLAN_FILE_BYTES = 40_000_000;
-function b64encode(bytes) { let s = ''; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000)); return btoa(s); }
-function b64decode(str) { const bin = atob(str), out = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i); return out; }
 async function getFile(env, ctx, name) {
   if (!FILE_NAME.test(name)) return err(404, 'not_found');
   const f = await env.DB.prepare('SELECT mime, data, updated_at FROM plan_files WHERE plan_id = ? AND name = ?').bind(ctx.plan.id, name).first();
   if (!f) return err(404, 'not_found');
-  return new Response(b64decode(await openText(env, f.data)), { headers: {
+  return new Response(unb64(await openText(env, f.data)), { headers: {
     'content-type': f.mime, 'cache-control': 'private, max-age=300', 'x-content-type-options': 'nosniff',
     'content-security-policy': "default-src 'none'; sandbox", 'last-modified': new Date(f.updated_at).toUTCString() } });
 }
@@ -560,7 +565,7 @@ async function putFile(req, env, ctx, name, url) {
   const tot = await env.DB.prepare('SELECT COUNT(*) AS n, COALESCE(SUM(size), 0) AS b FROM plan_files WHERE plan_id = ? AND name != ?').bind(ctx.plan.id, name).first();
   if (tot.n >= MAX_PLAN_FILES || tot.b + bytes.length > MAX_PLAN_FILE_BYTES) return err(413, 'plan_storage_full');
   await env.DB.prepare('INSERT OR REPLACE INTO plan_files (plan_id, name, mime, size, data, updated_by, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
-    .bind(ctx.plan.id, name, mime, bytes.length, await sealText(env, b64encode(bytes)), ctx.userId, nowIso()).run();
+    .bind(ctx.plan.id, name, mime, bytes.length, await sealText(env, b64(bytes)), ctx.userId, nowIso()).run();
   return json({ ok: true, name, size: bytes.length });
 }
 async function deleteFile(env, ctx, name) {

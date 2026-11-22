@@ -9,7 +9,6 @@
     "deploy:staging": "wrangler deploy --env staging",
     "schema": "wrangler d1 execute nadu-wedding-db --remote --file=./schema.sql",
     "schema:staging": "wrangler d1 execute nadu-wedding-staging-db --env staging --remote --file=./schema.sql",
-    "secret:staging": "wrangler secret put INVITE_CODE --env staging",
     "migrate": "wrangler d1 execute nadu-wedding-db --remote --file=./migrations/0004_security.sql",
     "migrate:staging": "wrangler d1 execute nadu-wedding-staging-db --env staging --remote --file=./migrations/0004_security.sql",
     "decrypt-backup": "node scripts/decrypt-backup.mjs",

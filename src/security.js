@@ -35,7 +35,6 @@ export async function keyStatus(env) {
   return { on: !!k, id: k ? k.id : null, prev: p ? p.id : null, badSecret: !!env.DATA_KEY && !k };
 }
 export const isEncrypted = (s) => typeof s === 'string' && s.startsWith('enc1:');
-export const keyIdOf = (s) => isEncrypted(s) ? s.split(':')[1] : null;
 export async function sealText(env, text) {
   const k = await currentKey(env);
   if (!k) return text;
