@@ -47,7 +47,7 @@ window.NaduI18n.zh = {
     kDday: 'D-day', kProg: '进度', kPaid: '已付款', kPlanned: '待付款', kGuests: '确认出席宾客', kMeal: '预计餐券', unitP: '', unitT: '',
     kGiftTotal: '已收礼金', vsPlan: '计划预计', planSnap: '最佳方案', stage: '阶段', tasks: '待办', done: '完成', rate: '进度',
     spendTitle: '支出明细', byCat: '按类别支出', planTotal: '计划婚礼总额（所选方案）', sumAll: '合计',
-    fCat: '类别', fItem: '项目', fAmt: '金额（韩元）', fStatus: '状态', fPaidBy: '付款人', fMemo: '备注', fOwnSplit: '此项单独设定分摊比例',
+    fCat: '类别', fItem: '项目', fAmt: '金额（韩元）', fStatus: '状态', fPaidBy: '付款人', fMemo: '备注', fOwnSplit: '此项单独设定分摊比例', splitNeed: '请至少填写一个比例（例：1, 1 或 50, 50）', splitIs: '此项分摊', splitHint: '数字是比例，1:1 和 50:50 一样。结算只计算已付款的项目。', ownSplitChip: '单独比例',
     save: '保存', cancel: '取消', update: '保存修改', edit: '编辑', phExp: '例：婚宴场地订金', expPaid: '已付款', expPlanned: '待付款', expEmpty: '还没有支出。在上方添加第一笔',
     sTitle: '双方家庭费用分摊', sHint: '按已付金额计算。设定比例后即可看到每人应承担多少、谁该转给谁。',
     sTransfers: '这样转账即可结清', sOwe: '应承担', sPaid: '实际已付', sBal: '差额（+ 应收 / − 应付）', party: '对象',

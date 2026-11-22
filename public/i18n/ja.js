@@ -47,7 +47,7 @@ window.NaduI18n.ja = {
     kDday: 'D-day', kProg: '進み具合', kPaid: '支払済み', kPlanned: '支払予定', kGuests: '出席確定のゲスト', kMeal: '料理の見込み数', unitP: '', unitT: '',
     kGiftTotal: '受け取ったご祝儀', vsPlan: 'プランの見込み', planSnap: '最適なプラン', stage: '段階', tasks: 'タスク', done: '完了', rate: '進み具合',
     spendTitle: '支出の記録', byCat: 'カテゴリ別の支出', planTotal: '予定している結婚式の総額（選んだプラン）', sumAll: '合計',
-    fCat: 'カテゴリ', fItem: '項目', fAmt: '金額（ウォン）', fStatus: '状態', fPaidBy: '支払った人', fMemo: 'メモ', fOwnSplit: 'この項目だけ分担率を変える',
+    fCat: 'カテゴリ', fItem: '項目', fAmt: '金額（ウォン）', fStatus: '状態', fPaidBy: '支払った人', fMemo: 'メモ', fOwnSplit: 'この項目だけ分担率を変える', splitNeed: '比率を1つ以上入力してください（例：1, 1 または 50, 50）', splitIs: 'この項目の分担', splitHint: '数字は比率です。1:1でも50:50でも同じです。精算は支払済みの項目だけで計算します。', ownSplitChip: '個別比率',
     save: '保存', cancel: 'キャンセル', update: '変更を保存', edit: '編集', phExp: '例：会場の手付金', expPaid: '支払済み', expPlanned: '支払予定', expEmpty: 'まだ支出がありません。上から最初の支出を追加しましょう',
     sTitle: '両家の費用分担', sHint: '支払済みの金額で計算します。割合を決めると、各自の負担額と誰が誰にいくら送るかがわかります。',
     sTransfers: 'この送金で精算できます', sOwe: '負担額', sPaid: '実際の支払額', sBal: '差額（+ 受け取る / − 送る）', party: '誰',

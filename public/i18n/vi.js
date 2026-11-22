@@ -47,7 +47,7 @@ window.NaduI18n.vi = {
     kDday: 'D-day', kProg: 'Tiến độ', kPaid: 'Đã trả', kPlanned: 'Còn phải trả', kGuests: 'Khách đã xác nhận', kMeal: 'Ước tính suất ăn', unitP: '', unitT: '',
     kGiftTotal: 'Tiền mừng đã nhận', vsPlan: 'Kế hoạch dự kiến', planSnap: 'Phương án tốt nhất', stage: 'Giai đoạn', tasks: 'Việc', done: 'Xong', rate: 'Tiến độ',
     spendTitle: 'Khoản chi', byCat: 'Chi tiêu theo danh mục', planTotal: 'Tổng đám cưới dự kiến (phương án đã chọn)', sumAll: 'Tổng',
-    fCat: 'Danh mục', fItem: 'Khoản', fAmt: 'Số tiền (KRW)', fStatus: 'Trạng thái', fPaidBy: 'Người trả', fMemo: 'Ghi chú', fOwnSplit: 'Tỷ lệ chia riêng cho khoản này',
+    fCat: 'Danh mục', fItem: 'Khoản', fAmt: 'Số tiền (KRW)', fStatus: 'Trạng thái', fPaidBy: 'Người trả', fMemo: 'Ghi chú', fOwnSplit: 'Tỷ lệ chia riêng cho khoản này', splitNeed: 'Nhập ít nhất một tỷ lệ (vd: 1, 1 hoặc 50, 50)', splitIs: 'Khoản này chia', splitHint: 'Các số là tỷ lệ, nên 1:1 và 50:50 như nhau. Phần quyết toán chỉ tính các khoản đã trả.', ownSplitChip: 'tỷ lệ riêng',
     save: 'Lưu', cancel: 'Huỷ', update: 'Lưu thay đổi', edit: 'Sửa', phExp: 'vd. Tiền cọc sảnh cưới', expPaid: 'Đã trả', expPlanned: 'Sẽ trả', expEmpty: 'Chưa có khoản chi nào. Thêm khoản đầu tiên ở trên',
     sTitle: 'Chia chi phí hai bên gia đình', sHint: 'Tính theo số tiền đã trả. Đặt tỷ lệ là biết mỗi người phải chịu bao nhiêu và ai chuyển cho ai.',
     sTransfers: 'Chuyển khoản để cân bằng', sOwe: 'Phần phải chịu', sPaid: 'Đã trả thực tế', sBal: 'Chênh lệch (+ nhận / − chuyển)', party: 'Ai',
