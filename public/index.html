@@ -283,8 +283,11 @@ form.entry { background: var(--surface); border: 1px solid var(--line); border-r
 form.entry label.f.wide { grid-column: span 2; }
 form.entry .acts { grid-column: 1 / -1; display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 form.entry .check { padding-bottom: 8px; }
+form.entry .check.wide { grid-column: 1 / -1; }
 form.entry.editing { border-color: var(--accent); }
 form.entry .split-f.hide { display: none; }
+form.entry .note { grid-column: 1 / -1; font-size: 14px; }
+form.entry .note.bad b { color: var(--bad, #c0392b); }
 .searchrow { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .searchrow input { flex: 1 1 200px; width: auto; }
 .searchrow select { width: auto; }
@@ -1435,7 +1438,7 @@ body.gated .wrap { visibility: hidden; }
     kDday: 'D-day', kProg: '준비 진행률', kPaid: '결제 완료', kPlanned: '결제 예정', kGuests: '참석 확정 하객', kMeal: '예상 식권', unitP: '명', unitT: '장', kGiftTotal: '받은 축의금', vsPlan: '계획 예상', planSnap: '예산 계획 최적안',
     stage: '시기', tasks: '할 일', done: '완료', rate: '진행률',
     spendTitle: '지출 내역', byCat: '카테고리별 지출', planTotal: '계획 결혼 총액 (선택 옵션)', sumAll: '합계',
-    fCat: '카테고리', fItem: '항목', fAmt: '금액', fStatus: '상태', fPaidBy: '낸 사람', fMemo: '메모', fOwnSplit: '이 항목만 비율 따로', save: '저장', cancel: '취소', update: '수정 저장', edit: '수정',
+    fCat: '카테고리', fItem: '항목', fAmt: '금액', fStatus: '상태', fPaidBy: '낸 사람', fMemo: '메모', fOwnSplit: '이 항목만 비율 따로', splitNeed: '비율을 하나 이상 넣어주세요 (예: 1, 1 또는 50, 50)', splitIs: '이 항목 분담', splitHint: '숫자는 비율이에요. 1:1이든 50:50이든 같아요. 정산은 결제 완료 항목만 계산해요.', ownSplitChip: '비율 따로', save: '저장', cancel: '취소', update: '수정 저장', edit: '수정',
     phExp: '예: 웨딩홀 계약금', expPaid: '결제 완료', expPlanned: '결제 예정', expEmpty: '아직 지출이 없어요. 위에서 첫 지출을 넣어보세요',
     sTitle: '양가 분담 정산', sHint: '결제 완료 금액 기준이에요. 비율만 정하면 각자 부담액과 송금할 금액이 나와요.', sTransfers: '이렇게 보내면 돼요', sOwe: '부담할 금액', sPaid: '실제 낸 금액', sBal: '차액 (+ 받을 돈 / − 보낼 돈)', party: '구분', noTransfer: '보낼 돈이 없어요. 모두 딱 맞게 냈어요', sepNote: '받을 돈이 있는 사람 순서로 최소 횟수만 보내도록 계산했어요. 원 단위 반올림으로 1원 정도 차이가 날 수 있어요.', nTransfers: (k) => `송금 ${k}건`,
     guestTitle: '하객 명단', gRate: '미정 하객 참석률 (%)', fName: '이름', fSide: '측', fGroup: '그룹', fCount: '인원', fAttend: '참석', phGroup: '예: 회사, 대학 동기', phSearch: '이름·그룹 검색',
@@ -1454,7 +1457,7 @@ body.gated .wrap { visibility: hidden; }
     kDday: 'D-day', kProg: 'Progress', kPaid: 'Paid', kPlanned: 'Still to pay', kGuests: 'Confirmed guests', kMeal: 'Meal tickets est.', unitP: '', unitT: '', kGiftTotal: 'Gift money received', vsPlan: 'Plan expects', planSnap: 'Best plan option',
     stage: 'Stage', tasks: 'Tasks', done: 'Done', rate: 'Progress',
     spendTitle: 'Expenses', byCat: 'Spending by category', planTotal: 'Planned wedding total (selected option)', sumAll: 'Total',
-    fCat: 'Category', fItem: 'Item', fAmt: 'Amount (KRW)', fStatus: 'Status', fPaidBy: 'Paid by', fMemo: 'Note', fOwnSplit: 'Custom split for this item', save: 'Save', cancel: 'Cancel', update: 'Save changes', edit: 'Edit',
+    fCat: 'Category', fItem: 'Item', fAmt: 'Amount (KRW)', fStatus: 'Status', fPaidBy: 'Paid by', fMemo: 'Note', fOwnSplit: 'Custom split for this item', splitNeed: 'Enter at least one ratio (e.g. 1, 1 or 50, 50)', splitIs: 'This item splits', splitHint: 'Numbers are ratios, so 1:1 and 50:50 are the same. Settle-up only counts paid items.', ownSplitChip: 'own split', save: 'Save', cancel: 'Cancel', update: 'Save changes', edit: 'Edit',
     phExp: 'e.g. Venue deposit', expPaid: 'Paid', expPlanned: 'To pay', expEmpty: 'No expenses yet. Add the first one above',
     sTitle: 'Family cost split', sHint: 'Based on paid amounts. Set the ratio and you get what each person owes and who sends what to whom.', sTransfers: 'Transfers to settle up', sOwe: 'Share owed', sPaid: 'Actually paid', sBal: 'Balance (+ receives / − sends)', party: 'Who', noTransfer: 'Nothing to send. Everyone paid exactly their share', sepNote: 'Worked out with the fewest transfers. Rounding to the won can leave about 1 won of difference.', nTransfers: (k) => `${k} transfer${k === 1 ? '' : 's'}`,
     guestTitle: 'Guest list', gRate: 'Attendance rate for maybes (%)', fName: 'Name', fSide: 'Side', fGroup: 'Group', fCount: 'People', fAttend: 'Coming', phGroup: 'e.g. Work, uni friends', phSearch: 'Search name or group',
@@ -1659,6 +1662,7 @@ body.gated .wrap { visibility: hidden; }
     const f = el('form', { class: 'entry', id });
     fields.forEach((fd) => {
       const iid = `${id}-${fd.name}`; let inp;
+      if (fd.type === 'note') { f.append(el('div', { class: 'note wide' + (fd.split ? ' split-f hide' : ''), id: iid })); return; }
       if (fd.type === 'check') { inp = el('input', { type: 'checkbox', id: iid, name: fd.name }); f.append(el('label', { class: 'check' + (fd.wide ? ' wide' : ''), for: iid }, inp, fd.label)); return; }
       if (fd.type === 'select') { inp = el('select', { id: iid, name: fd.name }, fd.opts().map(([v, l]) => el('option', { value: v, text: l }))); if (fd.def != null) inp.value = fd.def; }
       else {
@@ -1667,28 +1671,30 @@ body.gated .wrap { visibility: hidden; }
         if (fd.type === 'money') inp.addEventListener('blur', () => { if (inp.value !== '') inp.value = comma(parse(inp.value)); });
       }
       f.append(el('label', { class: 'f' + (fd.wide ? ' wide' : '') + (fd.split ? ' split-f hide' : ''), for: iid }, fd.label, inp));
+      if (fd.onInput) inp.addEventListener('input', () => fd.onInput(f));
     });
+    const data = fields.filter((fd) => fd.type !== 'note');
     const sub = el('button', { type: 'submit', class: 'primary', text: T('save') });
     const cancel = el('button', { type: 'button', text: T('cancel'), hidden: true });
     f.append(el('div', { class: 'acts' }, sub, cancel));
     f._editId = null;
-    const showSplit = (on) => f.querySelectorAll('.split-f').forEach((x) => x.classList.toggle('hide', !on));
+    const showSplit = (on) => { f.querySelectorAll('.split-f').forEach((x) => x.classList.toggle('hide', !on)); if (f.onSplit) f.onSplit(on); };
     if (f.elements.custom) f.elements.custom.addEventListener('change', (e) => showSplit(e.target.checked));
     f.resetForm = () => {
       const keep = {}; f.querySelectorAll('select').forEach((s) => { keep[s.name] = s.value; });
       f.reset(); Object.entries(keep).forEach(([k, v]) => { f.elements[k].value = v; });
-      fields.forEach((fd) => { if (fd.def != null && fd.type !== 'select') f.elements[fd.name].value = fd.def; });
+      data.forEach((fd) => { if (fd.def != null && fd.type !== 'select') f.elements[fd.name].value = fd.def; });
       f._editId = null; cancel.hidden = true; sub.textContent = T('save'); f.classList.remove('editing'); showSplit(false);
     };
     cancel.addEventListener('click', f.resetForm);
     f.addEventListener('submit', (e) => {
       e.preventDefault();
-      const o = {}; fields.forEach((fd) => { const x = f.elements[fd.name]; o[fd.name] = fd.type === 'check' ? x.checked : fd.type === 'money' ? parse(x.value) : fd.type === 'number' ? n(x.value) : x.value.trim(); });
+      const o = {}; data.forEach((fd) => { const x = f.elements[fd.name]; o[fd.name] = fd.type === 'check' ? x.checked : fd.type === 'money' ? parse(x.value) : fd.type === 'number' ? n(x.value) : x.value.trim(); });
       if (onSubmit(o, f._editId) === false) return;
       f.resetForm(); f.querySelector('input:not([type=checkbox])')?.focus();
     });
     f.edit = (obj) => {
-      fields.forEach((fd) => { const x = f.elements[fd.name]; if (fd.type === 'check') x.checked = !!obj[fd.name]; else if (fd.type === 'money') x.value = obj[fd.name] ? comma(obj[fd.name]) : ''; else x.value = obj[fd.name] ?? ''; });
+      data.forEach((fd) => { const x = f.elements[fd.name], v = fd.get ? fd.get(obj) : obj[fd.name]; if (fd.type === 'check') x.checked = !!v; else if (fd.type === 'money') x.value = v ? comma(v) : ''; else x.value = v ?? ''; });
       showSplit(!!(f.elements.custom && f.elements.custom.checked));
       f._editId = obj.id; cancel.hidden = false; sub.textContent = T('update'); f.classList.add('editing');
       f.scrollIntoView({ behavior: 'smooth', block: 'center' }); f.querySelector('input:not([type=checkbox])')?.focus({ preventScroll: true });
@@ -1702,18 +1708,38 @@ body.gated .wrap { visibility: hidden; }
     attend: () => [['yes', T('aYes')], ['maybe', T('aMaybe')], ['no', T('aNo')]]
   };
   let forms = {};
+  const splitText = (sp, amt) => {
+    const tot = PARTIES.reduce((a, [k]) => a + n(sp[k]), 0);
+    return PARTIES.filter(([k]) => n(sp[k]) > 0).map(([k]) => `${pname(k)} ${Math.round(n(sp[k]) / tot * 100)}%` + (amt ? ` (${won(Math.round(amt * n(sp[k]) / tot))})` : '')).join(' · ');
+  };
+  function splitPreview(f) {
+    const box = f.querySelector('.note'); if (!box) return;
+    const sp = {}; PARTIES.forEach(([k]) => { sp[k] = n(f.elements['s' + k].value); });
+    const any = PARTIES.some(([k]) => sp[k] > 0);
+    box.classList.toggle('bad', !any); box.innerHTML = '';
+    box.append(any ? el('b', { text: `${T('splitIs')}: ${splitText(sp, parse(f.elements.amount.value))}` }) : el('b', { text: T('splitNeed') }), el('div', { class: 'small', text: T('splitHint') }));
+  }
   function renderPrepForms() {
     forms.exp = entryForm('exp-form', [
       { name: 'cat', type: 'select', label: T('fCat'), opts: opts.cats }, { name: 'name', type: 'text', label: T('fItem'), ph: T('phExp') },
-      { name: 'amount', type: 'money', label: T('fAmt') }, { name: 'status', type: 'select', label: T('fStatus'), opts: opts.expStatus },
+      { name: 'amount', type: 'money', label: T('fAmt'), onInput: (f) => { if (f.elements.custom.checked) splitPreview(f); } }, { name: 'status', type: 'select', label: T('fStatus'), opts: opts.expStatus },
       { name: 'paidBy', type: 'select', label: T('fPaidBy'), opts: opts.parties }, { name: 'memo', type: 'text', label: T('fMemo'), wide: true },
       { name: 'custom', type: 'check', label: T('fOwnSplit'), wide: true },
-      ...PARTIES.map((p) => ({ name: 's' + p[0], type: 'number', label: pname(p[0]), split: true }))
+      ...PARTIES.map((p) => ({ name: 's' + p[0], type: 'number', label: pname(p[0]), split: true, get: (x) => x.split ? x.split[p[0]] : '', onInput: splitPreview })),
+      { name: 'splitnote', type: 'note', split: true }
     ], (o, id) => {
       if (!o.name || !o.amount) return false;
-      const d = { cat: o.cat, name: o.name, amount: o.amount, status: o.status, paidBy: o.paidBy, memo: o.memo, custom: o.custom, split: o.custom ? { g: o.sg, b: o.sb, gp: o.sgp, bp: o.sbp } : null };
+      const sp = { g: o.sg, b: o.sb, gp: o.sgp, bp: o.sbp }, any = Object.values(sp).some((v) => v > 0);
+      if (o.custom && !any) { splitPreview(forms.exp); forms.exp.elements.sg?.focus(); return false; }
+      const d = { cat: o.cat, name: o.name, amount: o.amount, status: o.status, paidBy: o.paidBy, memo: o.memo, custom: o.custom && any, split: o.custom && any ? sp : null };
       upsert(S.expenses, id, d); save(); renderSpend(); prepSums();
     });
+    forms.exp.onSplit = (on) => {
+      const f = forms.exp; if (!on) return;
+      // first time on: start from the overall ratio instead of four empty boxes
+      if (PARTIES.every(([k]) => f.elements['s' + k].value === '')) PARTIES.forEach(([k]) => { f.elements['s' + k].value = n(S.split[k]) || 0; });
+      splitPreview(f);
+    };
     forms.guest = entryForm('guest-form', [
       { name: 'name', type: 'text', label: T('fName') }, { name: 'side', type: 'select', label: T('fSide'), opts: opts.sides },
       { name: 'group', type: 'text', label: T('fGroup'), ph: T('phGroup') }, { name: 'count', type: 'number', label: T('fCount'), def: 1 },
@@ -1747,7 +1773,7 @@ body.gated .wrap { visibility: hidden; }
     list.forEach((x) => tb.append(el('tr', {},
       el('td', { class: 'l', text: cname(x.cat) }), el('td', { class: 'l vname', text: x.name }), el('td', { class: 'n', text: won(n(x.amount)) }),
       el('td', { class: 'l' }, el('span', { class: 'chip ' + (x.status === 'paid' ? 'good' : 'plan'), text: x.status === 'paid' ? T('expPaid') : T('expPlanned') })),
-      el('td', { class: 'l', text: pname(x.paidBy) + (x.custom ? ' *' : '') }), el('td', { class: 'l wrap-cell', text: x.memo || '' }),
+      el('td', { class: 'l' }, pname(x.paidBy), x.custom && x.split ? el('span', { class: 'chip', style: 'margin-left:6px', title: splitText(x.split), text: T('ownSplitChip') }) : null, x.custom && x.split ? el('div', { class: 'small', text: splitText(x.split) }) : null), el('td', { class: 'l wrap-cell', text: x.memo || '' }),
       rowActs(() => forms.exp.edit(x), () => { S.expenses = S.expenses.filter((y) => y !== x); save(); renderSpend(); prepSums(); }))));
     if (list.length) tb.append(el('tr', { class: 'tot' }, el('td', { class: 'l', colspan: 2, text: T('sumAll') }), el('td', { class: 'n', text: won(et.paid + et.planned) }), el('td', { colspan: 4 })));
     tbl.append(tb);
