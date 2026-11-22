@@ -1,16 +1,15 @@
 // Nadu Wedding Planner — page script (kept out of index.html so a strict Content-Security-Policy can forbid inline scripts).
 (function () {
-  const KEY = 'wedding-planner-v2';
   const uid = () => Math.random().toString(36).slice(2, 9);
   const $ = (id) => document.getElementById(id);
 
   // ---------- strings ----------
   const L = {
     ko: {
-      title: '결혼·신혼집 예산 플래너', lede: '숫자를 고치면 모든 옵션이 보유 현금 기준으로 다시 계산됩니다. 변경 내용은 이 브라우저에만 저장됩니다. 초기값은 현재 견적과 추정치입니다.',
+      title: '결혼·신혼집 예산 플래너',
       report: '인쇄용 보고서', skinStd: '기본', skinBright: '밝게', repOptVenues: '포함할 옵션', repOptSections: '포함할 항목', io: '가져오기·내보내기', reset: '초기화', resetConfirm: '정말 초기화?',
       ioTitle: '데이터 가져오기·내보내기', ioHelp: '이 JSON을 복사해 백업하거나 다른 브라우저로 옮기세요. 저장해 둔 계획을 붙여넣고 불러오기를 누르면 현재 계획을 대체합니다. 스드메 업체 목록 파일은 대체하지 않고 업체만 더해요.', listingsLoaded: (a, u) => `업체 ${a}곳 추가` + (u ? `, ${u}곳 업데이트` : ''), listingsNone: '목록 파일에 업체가 없어요.',
-      copy: '복사', load: '붙여넣은 계획 불러오기', openFile: '또는 .json 파일 열기:', dzJson: '.json 파일을 여기로 끌어다 놓거나 눌러서 고르세요', dzJsonHint: '내보낸 계획 파일(대체) 또는 업체 목록 파일(추가)',
+      copy: '복사', load: '붙여넣은 계획 불러오기', dzJson: '.json 파일을 여기로 끌어다 놓거나 눌러서 고르세요', dzJsonHint: '내보낸 계획 파일(대체) 또는 업체 목록 파일(추가)',
       secInputs: '예산 기준', krw: '모든 금액 단위: 원', tierLabel: '비교에 쓸 축의금 시나리오',
       cash: '보유 현금 (총예산)', deposit: '전세 보증금', loan: '대출 희망액', down: '자기자금', guests: '예상 하객 수',
       g0: '축의금/인 · 보수', g1: '축의금/인 · 현실', g2: '축의금/인 · 높음', brokerRate: '중개보수율 (%)', vat: '중개보수에 부가세 10% 포함',
@@ -34,17 +33,17 @@
       broker: '중개보수 (자동)', addItem: '+ 항목 추가', total: '합계', itemPh: '항목명',
       secLoans: '전세대출 옵션', addLoan: '+ 대출 추가', colUse: '사용', colProduct: '상품', colElig: '자격', colRate: '금리 %', colLimit: '한도', colMonthly: '월 이자', col2y: '2년 이자', colNotes: '비고',
       yes: '가능', no: '불가', loanHelp: '예산 기준의 대출액에 대한 이자만 계산합니다(상품 한도 적용). 한도가 대출액보다 작으면 차액은 자기자금에 더해집니다.',
-      newVenue: '새 예식장', newLoan: '새 대출', newFee: '대관',
+      newVenue: '새 예식장', newLoan: '새 대출',
       printHelp: '인쇄 버튼이나 Ctrl/⌘+P로 이 보고서만 인쇄하거나 PDF로 저장할 수 있어요.', copyReport: '보고서 복사', closeReport: '편집으로 돌아가기',
       repTitle: '결혼·신혼집 예산 보고서', repAsOf: '작성일', repInputs: '예산 기준', repChart: '옵션별 예산 구성', repCompare: '옵션 비교', repDetail: '옵션별 상세', repLoans: '전세대출', repWalk: '현금 흐름', repShared: '공통 비용',
-      dGuests: '청구 인원', dNetBy: '축의금 시나리오별 잔액', dSum: '예식장 합계', dWedding: '결혼 총액',
+      dNetBy: '축의금 시나리오별 잔액', dSum: '예식장 합계', dWedding: '결혼 총액',
       copied: '복사됨', selected: '선택됨. Ctrl/⌘+C로 복사하세요', badJson: '저장된 계획 형식이 아닙니다.', readFail: 'JSON을 읽을 수 없습니다. 전체가 복사됐는지 확인하세요.', loaded: '계획을 불러왔습니다', resetDone: '초기값으로 되돌렸습니다', fileFail: '파일을 읽을 수 없습니다.'
     },
     en: {
-      title: 'Wedding & home budget planner', lede: 'Edit any figure and every option re-scores against your cash. Changes save in this browser only. Starting figures are your current quotes and estimates.',
+      title: 'Wedding & home budget planner',
       report: 'Printable report', skinStd: 'Standard', skinBright: 'Bright', repOptVenues: 'Options to include', repOptSections: 'Sections to include', io: 'Import / export', reset: 'Reset', resetConfirm: 'Confirm reset',
       ioTitle: 'Import / export', ioHelp: 'Copy this JSON to back up your plan or move it to another browser. Paste a saved plan and press Load to replace the current one. A 스드메 listings file is different: it only adds listings.', listingsLoaded: (a, u) => `Added ${a} listing${a === 1 ? '' : 's'}` + (u ? `, updated ${u}` : ''), listingsNone: 'That listings file has no listings in it.',
-      copy: 'Copy', load: 'Load pasted plan', openFile: 'or open a .json file:', dzJson: 'Drop a .json file here, or click to choose one', dzJsonHint: 'An exported plan (replaces) or a listings file (adds)',
+      copy: 'Copy', load: 'Load pasted plan', dzJson: 'Drop a .json file here, or click to choose one', dzJsonHint: 'An exported plan (replaces) or a listings file (adds)',
       secInputs: 'Budget inputs', krw: 'All amounts in KRW (원)', tierLabel: 'Gift scenario used for comparison',
       cash: 'Total cash budget', deposit: 'Jeonse deposit', loan: 'Loan amount', down: 'Cash down payment', guests: 'Expected guests',
       g0: 'Gift per guest · low', g1: 'Gift per guest · realistic', g2: 'Gift per guest · high', brokerRate: 'Brokerage rate (%)', vat: 'Add 10% VAT to brokerage',
@@ -68,10 +67,10 @@
       broker: 'Brokerage (auto)', addItem: '+ Add item', total: 'Total', itemPh: 'Item',
       secLoans: 'Jeonse loan options', addLoan: '+ Add loan', colUse: 'Use', colProduct: 'Product', colElig: 'Eligible', colRate: 'Rate %', colLimit: 'Limit', colMonthly: 'Monthly', col2y: '2-yr interest', colNotes: 'Notes',
       yes: 'Yes', no: 'No', loanHelp: 'Interest only, on the loan amount in Budget inputs, capped at each product\'s limit. If the limit is below your loan, the gap is added to your cash down payment.',
-      newVenue: 'New venue', newLoan: 'New loan', newFee: 'Hall',
+      newVenue: 'New venue', newLoan: 'New loan',
       printHelp: 'Press Print or Ctrl/⌘+P to print just this report or save it as a PDF.', copyReport: 'Copy report', closeReport: 'Back to editing',
       repTitle: 'Wedding & home budget report', repAsOf: 'Prepared', repInputs: 'Budget inputs', repChart: 'Budget breakdown by option', repCompare: 'Option comparison', repDetail: 'Option details', repLoans: 'Jeonse loans', repWalk: 'Cash flow', repShared: 'Shared costs',
-      dGuests: 'Billed guests', dNetBy: 'Left after wedding by gift scenario', dSum: 'Venue total', dWedding: 'Wedding total',
+      dNetBy: 'Left after wedding by gift scenario', dSum: 'Venue total', dWedding: 'Wedding total',
       copied: 'Copied', selected: 'Selected. Press Ctrl/⌘+C to copy', badJson: 'This JSON is not a saved plan.', readFail: 'Could not read the JSON. Check it was copied whole.', loaded: 'Plan loaded', resetDone: 'Reset to starting figures', fileFail: 'Could not read that file.'
     }
   };
@@ -172,11 +171,6 @@
     const i = el('input', { id: id + '-' + S.lang, type: 'text', placeholder: obj[other] || T('itemPh'), ...extra });
     i.value = obj[k] || '';
     i.addEventListener('input', () => { obj[k] = i.value; save(); compute(); });
-    return i;
-  }
-  function textInput(id, get, set, extra = {}) {
-    const i = el('input', { id, type: 'text', ...extra }); i.value = get() || '';
-    i.addEventListener('input', () => { set(i.value); save(); compute(); });
     return i;
   }
   // ---------- note fields: a one-line box that pops out into a large editor ----------
@@ -326,7 +320,6 @@
   }
   function updateSums(M) {
     const set = (k, v) => document.querySelectorAll(`[data-sum="${k}"]`).forEach((e) => { e.textContent = v; });
-    const B = S.budget;
     set('sec:inputs', `${T('cashTotal')} ${kr(M.cashTotal)}`);
     set('sec:overview', M.best ? `${T('best')}: ${nm(M.best.v)} · ${kr(M.best.final)}` : T('noFit'));
     set('sec:walk-sec', M.sel ? `${T('wFinal')} ${kr(M.sel.final)}` : '');
@@ -1406,7 +1399,7 @@
   const isRecList = (v) => Array.isArray(v) && v.every((x) => isObj(x) && x.id != null);
 
   Object.assign(L.ko, {
-    tHistory: '변경 기록', printNow: '인쇄 · PDF 저장', gUser: '아이디', gPass: '비밀번호', gDisplay: '표시 이름', gInvite: '초대 코드', gLogin: '로그인', gSignup: '가입하기',
+    tHistory: '변경 기록', printNow: '인쇄 · PDF 저장', gPass: '비밀번호', gLogin: '로그인', gSignup: '가입하기',
     gToSignup: '처음이세요? 초대 코드로 가입하기', gToLogin: '이미 계정이 있어요. 로그인하기', gTitleLogin: '둘만의 웨딩 플래너에 로그인', gTitleSignup: '계정 만들기',
     gErr: { bad_login: '아이디나 비밀번호가 맞지 않아요.', bad_invite: '초대 코드가 맞지 않아요.', user_limit: '더 이상 계정을 만들 수 없어요.', username_taken: '이미 있는 아이디예요.', bad_username: '아이디는 영문·숫자 3~32자로 만들어 주세요.', weak_password: '비밀번호는 8자 이상이어야 해요.', too_many_attempts: '시도가 너무 많아요. 15분 뒤에 다시 해 주세요.', invite_not_configured: '서버에 초대 코드가 아직 설정되지 않았어요.', network: '서버에 연결할 수 없어요.' },
     logout: '로그아웃', stSaving: '저장 중…', stSaved: '저장됨', stError: '저장 실패 · 다시 시도 중', stOffline: '오프라인', stMerged: '두 사람의 수정을 합쳤어요',
@@ -1417,7 +1410,7 @@
     keyLabels: { budget: '예산 기준', selectedVenue: '선택한 예식장', selectedLoan: '선택한 대출', venues: '예식장 옵션', nonVenue: '예식장 외 비용', afterCosts: '입주 비용', honsu: '혼수', categories: '추가 카테고리', loans: '대출 옵션', seeded: '기본 옵션', wedding: '예식 날짜', checks: '체크리스트 완료', tasks: '직접 추가한 할 일', expenses: '지출 내역', split: '분담 비율', guests: '하객 명단', guestRate: '미정 참석률', giftLog: '받은 축의금', vendors: '업체 비교', sdm: '스드메 조합', sdmCatalog: '스드메 업체 목록' }
   });
   Object.assign(L.en, {
-    tHistory: 'History', printNow: 'Print · Save as PDF', gUser: 'Username', gPass: 'Password', gDisplay: 'Display name', gInvite: 'Invite code', gLogin: 'Sign in', gSignup: 'Create account',
+    tHistory: 'History', printNow: 'Print · Save as PDF', gPass: 'Password', gLogin: 'Sign in', gSignup: 'Create account',
     gToSignup: 'New here? Sign up with the invite code', gToLogin: 'Already have an account? Sign in', gTitleLogin: 'Sign in to your wedding planner', gTitleSignup: 'Create your account',
     gErr: { bad_login: 'That username and password don’t match.', bad_invite: 'That invite code isn’t right.', user_limit: 'No more accounts can be created.', username_taken: 'That username is taken.', bad_username: 'Use 3–32 letters, numbers, dots, dashes or underscores.', weak_password: 'Use at least 8 characters.', too_many_attempts: 'Too many attempts. Try again in 15 minutes.', invite_not_configured: 'The invite code hasn’t been set on the server yet.', network: 'Can’t reach the server.' },
     logout: 'Sign out', stSaving: 'Saving…', stSaved: 'Saved', stError: 'Save failed · retrying', stOffline: 'Offline', stMerged: 'Merged both of your edits',
@@ -1579,11 +1572,9 @@
 
   // ================= accounts, plans, settings, admin =================
   Object.assign(L.ko, {
-    appName: 'Nadu Wedding Planner', appNameKo: '나두 웨딩 플래너',
     gEmail: '이메일', gEmailOrId: '이메일 (예전 계정은 아이디)', gName: '이름 (상대에게 보이는 이름)', gNewPass: '새 비밀번호 (8자 이상)',
     gTitleLogin: '로그인', gTitleSignup: '무료 체험 시작하기', gTitleForgot: '비밀번호 찾기', gTitleReset: '새 비밀번호 설정',
     gToSignup: '처음이세요? 계정 만들기', gToLogin: '이미 계정이 있어요 · 로그인', gToForgot: '비밀번호를 잊었어요',
-    gAgree: '개인정보 안내를 읽었고 동의합니다', gPrivacy: '개인정보 안내',
     gNotice: '가입하면 서비스 제공을 위해 이메일, 이름, 암호화된 비밀번호를 수집하고, 입력한 결혼 준비 정보를 Cloudflare(해외 서버 포함)에 암호화해 보관해요. 계정을 삭제하면 바로 지워져요.', gPrivacyLink: '개인정보처리방침 보기',
     gAge14: '만 14세 이상이에요', gCode: '인증 앱의 6자리 코드',
     gNeedCode: '2단계 인증을 켠 계정이에요. 인증 앱의 6자리 코드를 입력하세요.', gLeft: (k) => ` (남은 시도 ${k}회)`,
@@ -1607,15 +1598,15 @@
     gSent: '계정이 있다면 재설정 링크를 이메일로 보냈어요. 메일이 오지 않으면 관리자에게 문의하세요.',
     gTagline: '둘이 함께 쓰는 결혼·신혼집 예산 플래너',
     gErr: { age_required: '만 14세 이상만 가입할 수 있어요.', common_password: '너무 흔한 비밀번호예요. 다른 비밀번호를 써 주세요.', password_has_email: '비밀번호에 이메일을 넣지 마세요.', signup_closed: '지금은 새 가입을 받지 않아요.', totp_required: '인증 코드를 입력하세요.', bad_code: '인증 코드가 맞지 않아요.', addon_required: '유료 부가 서비스예요. 관리자에게 문의하세요.', id_number: '주민등록번호 같은 고유식별번호는 저장할 수 없어요.', admin_2fa_required: '2단계 인증으로 로그인해야 해요.', reason_required: '백업하는 이유를 적어 주세요.', weak_passphrase: '파일 비밀번호는 12자 이상이어야 해요.', slow_down: '요청이 너무 많아요. 잠시 후 다시 시도하세요.', bot_check_failed: '자동 가입 방지 확인을 다시 해 주세요.', no_setup: '먼저 2단계 인증 설정을 시작하세요.', no_key: '암호화 키(DATA_KEY)가 설정되지 않았어요.',
-      bad_login: '이메일이나 비밀번호가 맞지 않아요.', bad_email: '이메일 주소를 확인해 주세요.', email_taken: '이미 가입된 이메일이에요. 로그인하거나 비밀번호를 찾아보세요.', weak_password: '비밀번호는 8자 이상이어야 해요.', no_name: '이름을 입력해 주세요.', must_agree: '개인정보 안내에 동의해야 가입할 수 있어요.', too_many_attempts: '시도가 너무 많아요. 잠시 뒤에 다시 해 주세요.', bot_check_failed: '자동 가입 방지 확인을 다시 해 주세요.', bad_reset_link: '링크가 만료됐거나 이미 사용됐어요. 다시 요청해 주세요.', bad_invite: '초대 코드가 맞지 않거나 만료됐어요.', plan_limit: '만들 수 있는 플랜 수를 넘었어요.', bad_password: '현재 비밀번호가 맞지 않아요.', last_owner: '소유자가 최소 한 명은 있어야 해요.', last_member: '마지막 멤버는 나갈 수 없어요. 계정 삭제를 이용하세요.', owner_only: '플랜 소유자만 할 수 있어요.', read_only: '읽기 전용이에요.', plan_expired: '이용 기간이 끝나 읽기 전용이에요.', network: '서버에 연결할 수 없어요.' },
+      bad_login: '이메일이나 비밀번호가 맞지 않아요.', bad_email: '이메일 주소를 확인해 주세요.', email_taken: '이미 가입된 이메일이에요. 로그인하거나 비밀번호를 찾아보세요.', weak_password: '비밀번호는 8자 이상이어야 해요.', no_name: '이름을 입력해 주세요.', must_agree: '개인정보 안내에 동의해야 가입할 수 있어요.', too_many_attempts: '시도가 너무 많아요. 잠시 뒤에 다시 해 주세요.', bad_reset_link: '링크가 만료됐거나 이미 사용됐어요. 다시 요청해 주세요.', bad_invite: '초대 코드가 맞지 않거나 만료됐어요.', plan_limit: '만들 수 있는 플랜 수를 넘었어요.', bad_password: '현재 비밀번호가 맞지 않아요.', last_owner: '소유자가 최소 한 명은 있어야 해요.', last_member: '마지막 멤버는 나갈 수 없어요. 계정 삭제를 이용하세요.', owner_only: '플랜 소유자만 할 수 있어요.', read_only: '읽기 전용이에요.', plan_expired: '이용 기간이 끝나 읽기 전용이에요.', network: '서버에 연결할 수 없어요.' },
     obTitle: '플랜 시작하기', obHelp: '새 플랜을 만들거나, 상대가 보낸 초대 코드로 참여하세요.', obNew: '새 플랜 만들기', obJoin: '초대 코드로 참여',
     obA: '신랑 이름', obB: '신부 이름', obCreate: '플랜 만들기', obCode: '초대 코드', obJoinBtn: '참여하기', obTrial: (d) => `새 플랜은 ${d}일 동안 무료로 체험할 수 있어요.`,
     tSettings: '설정', tAdmin: '관리자',
     accTrial: (d) => `체험 중 · ${d}일 남음`, accActive: '이용 중', accActiveUntil: (d) => `이용 중 · ${d}까지`, accExpired: '이용 기간 만료 · 읽기 전용', accViewer: '보기 전용',
     roBanner: { expired: '이용 기간이 끝나 읽기 전용이에요. 데이터 보기와 내보내기는 계속할 수 있어요.', viewer: '보기 전용 멤버예요. 편집은 소유자나 편집자만 할 수 있어요.' },
     payHow: '이용 연장·AI 기능 신청은 관리자에게 문의해 주세요.', contact: '문의',
-    sPlan: '플랜', sNames: '이름', sSaveNames: '이름 저장', sMembers: '멤버', sInvite: '초대하기', sInviteHelp: '코드나 링크를 상대에게 보내세요. 7일 동안 한 번 사용할 수 있어요.',
-    sRoleEditor: '편집자 (함께 수정)', sRoleViewer: '보기 전용 (예: 부모님)', sMakeInvite: '초대 코드 만들기', sOpenInvites: (k) => `사용 전 초대 ${k}개`, sRevoke: '취소',
+    sPlan: '플랜', sSaveNames: '이름 저장', sMembers: '멤버', sInvite: '초대하기', sInviteHelp: '코드나 링크를 상대에게 보내세요. 7일 동안 한 번 사용할 수 있어요.',
+    sRoleEditor: '편집자 (함께 수정)', sRoleViewer: '보기 전용 (예: 부모님)', sMakeInvite: '초대 코드 만들기', sOpenInvites: (k) => `사용 전 초대 ${k}개`,
     rOwner: '소유자', rEditor: '편집자', rViewer: '보기 전용', sRemove: '내보내기', sLeave: '플랜에서 나가기', sYou: '나',
     sStatus: '이용 상태', sAI: 'AI 기능 (견적 자동 읽기 등)', sAIon: '사용 가능', sAIoff: '유료 추가 기능 · 관리자에게 신청',
     sAccount: '내 계정', sEmailNeeded: '이메일을 등록하면 비밀번호를 잊었을 때 재설정할 수 있어요.', sSave: '저장', sChangePass: '비밀번호 변경', sCurPass: '현재 비밀번호', sNewPass: '새 비밀번호',
@@ -1623,16 +1614,12 @@
     sNewPlan: '다른 플랜 만들기', saved: '저장했어요', copied2: '복사했어요', planSwitch: '플랜',
     adTitle: '관리자 · 플랜과 결제', adHelp: '결제를 받은 뒤 기간을 연장하고, AI 기능을 켜거나 끄세요. 이메일 발송이 설정되지 않았다면 여기서 비밀번호 재설정 링크를 만들어 전달하세요.',
     adPlan: '플랜', adMembers: '멤버', adAccess: '상태', adUntil: '체험/이용 종료', adAI: 'AI', adNote: '메모', adActions: '결제 기록', adLast: '마지막 수정',
-    adBackupTitle: '전체 백업', adBackup: '전체 백업 다운로드 (.sql)', adBackupHelp: '모든 계정, 플랜, 데이터와 변경 기록을 파일 하나로 저장해요. 운영에 배포하기 전에 꼭 받아두세요. 복원: npx wrangler d1 execute <데이터베이스> --remote --file <파일>.sql',
-    ad30: '+30일', ad365: '+1년', adExpire: '만료', adReset: '재설정 링크', adNoPlan: '플랜이 없는 계정', adEmail: (on) => on ? '이메일 발송: 설정됨' : '이메일 발송: 설정 안 됨 (재설정 링크를 직접 전달)',
-    privacyText: 'Nadu Wedding Planner는 결혼 준비에 필요한 정보(예산, 하객, 축의금, 체크리스트 등)와 계정 정보(이메일, 이름, 암호화된 비밀번호)를 Cloudflare 서버에 저장합니다. 이 정보는 서비스 제공과 문의 응대에만 쓰이며 광고나 제3자 제공에 쓰이지 않습니다. 같은 플랜의 멤버만 플랜 데이터를 볼 수 있어요. 언제든 데이터를 내보낼 수 있고, 설정에서 계정을 삭제하면 관련 데이터가 삭제됩니다.'
+    ad30: '+30일', ad365: '+1년', adExpire: '만료', adReset: '재설정 링크', adNoPlan: '플랜이 없는 계정', adEmail: (on) => on ? '이메일 발송: 설정됨' : '이메일 발송: 설정 안 됨 (재설정 링크를 직접 전달)'
   });
   Object.assign(L.en, {
-    appName: 'Nadu Wedding Planner', appNameKo: 'Nadu Wedding Planner',
     gEmail: 'Email', gEmailOrId: 'Email (or username for older accounts)', gName: 'Your name (shown to your partner)', gNewPass: 'New password (8+ characters)',
     gTitleLogin: 'Sign in', gTitleSignup: 'Start your free trial', gTitleForgot: 'Forgot your password?', gTitleReset: 'Set a new password',
     gToSignup: 'New here? Create an account', gToLogin: 'Already have an account? Sign in', gToForgot: 'Forgot password',
-    gAgree: 'I have read and agree to the privacy note', gPrivacy: 'Privacy note',
     gNotice: 'To run the service we collect your email, name and an encrypted password, and keep the wedding details you enter encrypted on Cloudflare (including servers outside Korea). Deleting your account deletes them right away.', gPrivacyLink: 'Read the privacy policy',
     gAge14: 'I am 14 or older', gCode: '6-digit code from your authenticator app',
     gNeedCode: 'This account uses two-step sign-in. Enter the 6-digit code from your authenticator app.', gLeft: (k) => ` (${k} tries left)`,
@@ -1656,15 +1643,15 @@
     gSent: 'If that email has an account, a reset link is on its way. No email? Contact the site admin.',
     gTagline: 'A wedding & first-home budget planner for two',
     gErr: { age_required: 'You must be 14 or older to sign up.', common_password: 'That password is too common. Pick another one.', password_has_email: 'Don’t put your email in your password.', signup_closed: 'New sign-ups are closed right now.', totp_required: 'Enter your sign-in code.', bad_code: 'That code isn’t right.', addon_required: 'This is a paid add-on. Ask the admin.', id_number: 'ID numbers such as resident registration numbers can’t be stored.', admin_2fa_required: 'Sign in with two-step sign-in first.', reason_required: 'Add a reason for the backup.', weak_passphrase: 'The file passphrase needs 12 or more characters.', slow_down: 'Too many requests. Try again in a moment.', bot_check_failed: 'Please complete the bot check again.', no_setup: 'Start two-step setup first.', no_key: 'No encryption key (DATA_KEY) is set.',
-      bad_login: 'That email and password don’t match.', bad_email: 'Check the email address.', email_taken: 'That email already has an account. Sign in or reset your password.', weak_password: 'Use at least 8 characters.', no_name: 'Enter your name.', must_agree: 'Please agree to the privacy note to sign up.', too_many_attempts: 'Too many attempts. Try again in a little while.', bot_check_failed: 'Please complete the bot check again.', bad_reset_link: 'This link has expired or was already used. Request a new one.', bad_invite: 'That invite code is wrong or expired.', plan_limit: 'You’ve reached the number of plans you can create.', bad_password: 'Your current password isn’t right.', last_owner: 'A plan needs at least one owner.', last_member: 'The last member can’t leave. Delete the account instead.', owner_only: 'Only the plan owner can do that.', read_only: 'This plan is read-only for you.', plan_expired: 'Your access has ended, so the plan is read-only.', network: 'Can’t reach the server.' },
+      bad_login: 'That email and password don’t match.', bad_email: 'Check the email address.', email_taken: 'That email already has an account. Sign in or reset your password.', weak_password: 'Use at least 8 characters.', no_name: 'Enter your name.', must_agree: 'Please agree to the privacy note to sign up.', too_many_attempts: 'Too many attempts. Try again in a little while.', bad_reset_link: 'This link has expired or was already used. Request a new one.', bad_invite: 'That invite code is wrong or expired.', plan_limit: 'You’ve reached the number of plans you can create.', bad_password: 'Your current password isn’t right.', last_owner: 'A plan needs at least one owner.', last_member: 'The last member can’t leave. Delete the account instead.', owner_only: 'Only the plan owner can do that.', read_only: 'This plan is read-only for you.', plan_expired: 'Your access has ended, so the plan is read-only.', network: 'Can’t reach the server.' },
     obTitle: 'Start planning', obHelp: 'Create a new plan, or join your partner’s with the invite code they sent.', obNew: 'Create a new plan', obJoin: 'Join with an invite code',
     obA: 'Groom’s name', obB: 'Bride’s name', obCreate: 'Create plan', obCode: 'Invite code', obJoinBtn: 'Join', obTrial: (d) => `New plans come with a ${d}-day free trial.`,
     tSettings: 'Settings', tAdmin: 'Admin',
     accTrial: (d) => `Trial · ${d} day${d === 1 ? '' : 's'} left`, accActive: 'Active', accActiveUntil: (d) => `Active until ${d}`, accExpired: 'Access ended · read-only', accViewer: 'View only',
     roBanner: { expired: 'Your access has ended, so the plan is read-only. You can still view and export everything.', viewer: 'You’re a view-only member. Only the owner and editors can make changes.' },
     payHow: 'To extend access or add AI features, contact the site admin.', contact: 'Contact',
-    sPlan: 'Plan', sNames: 'Names', sSaveNames: 'Save names', sMembers: 'Members', sInvite: 'Invite someone', sInviteHelp: 'Send the code or link. It works once, for 7 days.',
-    sRoleEditor: 'Editor (edits with you)', sRoleViewer: 'View only (e.g. parents)', sMakeInvite: 'Create invite code', sOpenInvites: (k) => `${k} unused invite${k === 1 ? '' : 's'}`, sRevoke: 'Cancel',
+    sPlan: 'Plan', sSaveNames: 'Save names', sMembers: 'Members', sInvite: 'Invite someone', sInviteHelp: 'Send the code or link. It works once, for 7 days.',
+    sRoleEditor: 'Editor (edits with you)', sRoleViewer: 'View only (e.g. parents)', sMakeInvite: 'Create invite code', sOpenInvites: (k) => `${k} unused invite${k === 1 ? '' : 's'}`,
     rOwner: 'Owner', rEditor: 'Editor', rViewer: 'View only', sRemove: 'Remove', sLeave: 'Leave this plan', sYou: 'you',
     sStatus: 'Access', sAI: 'AI features (automatic quote reading, etc.)', sAIon: 'Available', sAIoff: 'Paid add-on · ask the admin',
     sAccount: 'My account', sEmailNeeded: 'Add an email so you can reset your password if you forget it.', sSave: 'Save', sChangePass: 'Change password', sCurPass: 'Current password', sNewPass: 'New password',
@@ -1672,9 +1659,7 @@
     sNewPlan: 'Create another plan', saved: 'Saved', copied2: 'Copied', planSwitch: 'Plan',
     adTitle: 'Admin · plans & payments', adHelp: 'After a couple pays you, extend their access and turn AI on or off. If email sending isn’t set up, create password reset links here and pass them on.',
     adPlan: 'Plan', adMembers: 'Members', adAccess: 'Access', adUntil: 'Trial / paid until', adAI: 'AI', adNote: 'Note', adActions: 'Record payment', adLast: 'Last edit',
-    adBackupTitle: 'Full backup', adBackup: 'Download full backup (.sql)', adBackupHelp: 'Saves every account, plan, section and history entry in one file. Take one before every release to live. Restore: npx wrangler d1 execute <database> --remote --file <file>.sql',
-    ad30: '+30 days', ad365: '+1 year', adExpire: 'End', adReset: 'Reset link', adNoPlan: 'Accounts without a plan', adEmail: (on) => on ? 'Email sending: set up' : 'Email sending: not set up (pass reset links on yourself)',
-    privacyText: 'Nadu Wedding Planner stores your wedding planning data (budget, guests, gift money, checklist and so on) and account details (email, name, encrypted password) on Cloudflare’s servers. It is used only to run the service and answer support requests — never for advertising or shared with third parties. Only members of a plan can see that plan’s data. You can export your data at any time, and deleting your account in Settings deletes the related data.'
+    ad30: '+30 days', ad365: '+1 year', adExpire: 'End', adReset: 'Reset link', adNoPlan: 'Accounts without a plan', adEmail: (on) => on ? 'Email sending: set up' : 'Email sending: not set up (pass reset links on yourself)'
   });
   const ENV = { env: 'production', turnstileSiteKey: null, contact: null, trialDays: 14 };
   const fmtDate = (ms) => new Date(ms).toLocaleDateString(locale(), { year: 'numeric', month: 'short', day: 'numeric' });

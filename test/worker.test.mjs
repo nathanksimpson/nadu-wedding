@@ -2,7 +2,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import fs from 'node:fs';
 import worker, { housekeeping } from '../src/worker.js';
-import { totpAt, unb64 } from '../src/security.js';
+import { totpAt } from '../src/security.js';
 import { decryptBackup } from '../scripts/decrypt-backup.mjs';
 
 const db = new DatabaseSync(':memory:');

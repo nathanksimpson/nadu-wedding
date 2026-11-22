@@ -1,6 +1,6 @@
 // Reports what each language file in public/i18n/ is missing compared with English.
 //   node scripts/i18n-check.mjs        (exit code 1 if anything user-facing is missing)
-// Admin-only screens stay Korean/English on purpose (keys starting with sec/bk/au/nt/ad, plus retired keys).
+// Admin-only screens stay Korean/English on purpose (keys starting with sec/bk/au/nt/ad, and the admin backup button).
 import fs from 'node:fs';
 const root = new URL('../public/', import.meta.url);
 const app = fs.readFileSync(new URL('app.js', root), 'utf8'), sdm = fs.readFileSync(new URL('sdm.js', root), 'utf8');
@@ -17,7 +17,7 @@ for (const src of [app, sdm]) {
 const uiStrings = new Set(); const walk = (v) => { if (typeof v === 'string') uiStrings.add(v); else if (v && typeof v === 'object') Object.values(v).forEach(walk); };
 walk(L.en); walk(STRen);
 const dataList = [...data].filter((s) => !uiStrings.has(s) && s.length > 1 && !/^[a-z]{2}-[A-Z]{2}$/.test(s));
-const SKIP = /^(sec|bk|au|nt|ad)[A-Z0-9]|^(gUser|gDisplay|gInvite|gAgree|gPrivacy|privacyText|appName|appNameKo|exBackup)$/;
+const SKIP = /^(sec|bk|au|nt|ad)[A-Z0-9]|^exBackup$/;
 const deepMissing = (en, tr, path = '') => {
   const out = [];
   for (const [k, v] of Object.entries(en)) {
