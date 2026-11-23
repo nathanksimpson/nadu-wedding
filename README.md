@@ -14,6 +14,11 @@ One Cloudflare Worker serves the page (`public/`) and the API (`src/worker.js`);
   the tests include attempts to read, write, export or restore across plans.
 - **Access:** new plans get a free trial (`TRIAL_DAYS`, default 14). After that the plan is read-only
   until an admin records a payment in the **Admin** tab (+30 days / +1 year).
+- **Documents tab** (서류함): receipts, contracts, quotes and other files (PDF, images, HWP, Word, Excel, text), up to
+  5 MB each, linked to an expense or vendor. The list is the synced `documents` section; files are `doc-…` plan files,
+  stored in 700 KB parts in `plan_files` (a D1 value is capped near 2 MB after base64 + encryption), sharing the plan's
+  40 MB / 400-file storage with 스드메 photos. Every open, download, upload and delete is in the access log. Members can
+  always download their documents, whatever the plan's status.
 - **Export is always free** for every member (JSON and CSV), whatever the plan's status: people have the right to
   their own data (개인정보보호법 제35조). **Paid add-ons** per plan, switched on in the Admin tab: **AI features** and
   **Import** (loading a file into a plan). Admins always have both.
@@ -41,7 +46,7 @@ See `docs/privacy-security-plan.md` (checklist), `docs/internal-management-plan.
 - **Settings** (Worker variables or secrets; keep personal contacts out of this public repo):
   `PRIVACY_OFFICER`, `PRIVACY_EMAIL` (shown in the policy), `CONTACT_EMAIL`, `TURNSTILE_SITEKEY` + `TURNSTILE_SECRET`,
   `RESEND_API_KEY` + `MAIL_FROM` (password reset and retention warnings), `SIGNUP_OPEN` (`false` on staging).
-- **Encryption at rest:** plan sections, history, photos and two-step keys are AES-256-GCM encrypted when the
+- **Encryption at rest:** plan sections, history, photos, documents and two-step keys are AES-256-GCM encrypted when the
   `DATA_KEY` secret is set. Create and set it once per environment (keep a copy in a password manager — without it the
   data can't be read):
   ```bash

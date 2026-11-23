@@ -126,6 +126,34 @@ ok((await putFile(nathan, P1, 'big.jpg', new Uint8Array(800_000))).status === 41
 ok((await worker.fetch(new Request(base + '/api/plan/files/sdm-s1.jpg', { method: 'DELETE', headers: { cookie: 'sid=' + nathan, origin: base, 'x-plan-id': String(P1) } }), env)).status === 200, 'editor deletes a photo');
 ok((await getFile(nathan, P1, 'sdm-s1.jpg')).status === 404, 'deleted photo is gone');
 await putFile(nathan, P1, 'sdm-s1.jpg', jpg);
+
+// ---- documents (receipts, contracts, quotes): bigger files in parts ----
+const pdf = new Uint8Array(1_800_000); for (let i = 0; i < pdf.length; i++) pdf[i] = (i * 31 + 7) & 255; pdf.set([0x25, 0x50, 0x44, 0x46], 0);
+ok((await call('/api/doc/documents', { method: 'PUT', sid: nathan, plan: P1, body: { value: [{ id: 'd1', file: 'doc-d1.pdf', title: '웨딩홀 계약서', kind: 'contract' }], baseVersion: 0 } })).status === 200, 'documents section saves');
+ok((await putFile(nathan, P1, 'doc-d1.pdf', pdf, 'application/pdf')).status === 200, 'editor uploads a 1.8 MB PDF');
+ok(db.prepare("SELECT COUNT(*) AS n FROM plan_files WHERE plan_id = ? AND name LIKE 'doc-d1.pdf%'").get(P1).n === 3, 'large document stored in parts');
+fr = await worker.fetch(new Request(base + '/api/plan/files/doc-d1.pdf?plan=' + P1 + '&fn=' + encodeURIComponent('웨딩홀 계약서.pdf'), { headers: { cookie: 'sid=' + duyeon } }), env);
+ok(fr.status === 200 && Buffer.from(await fr.arrayBuffer()).equals(Buffer.from(pdf)), 'member downloads the whole document back');
+ok(fr.headers.get('content-disposition').startsWith('inline') && fr.headers.get('content-disposition').includes(encodeURIComponent('웨딩홀')), 'PDF opens inline with its own name');
+fr = await worker.fetch(new Request(base + '/api/plan/files/doc-d1.pdf?plan=' + P1 + '&dl=1', { headers: { cookie: 'sid=' + duyeon } }), env);
+ok(fr.headers.get('content-disposition').startsWith('attachment'), 'download button saves the file');
+ok(db.prepare("SELECT COUNT(*) AS n FROM audit_log WHERE action = 'doc_download'").get().n === 2, 'document downloads are logged');
+ok((await getFile(nathan, P1, 'doc-d1.pdf.p1')).status === 404, 'parts cannot be fetched directly');
+ok((await getFile(eve, P1, 'doc-d1.pdf')).status === 404, 'ISOLATION: cannot read another plan\'s document');
+ok((await putFile(mom, P1, 'doc-x.pdf', pdf, 'application/pdf')).status === 403, 'viewer cannot upload documents');
+ok((await putFile(nathan, P1, 'doc-x.hwp', new Uint8Array([1, 2, 3]), 'application/x-hwp')).status === 200, 'HWP documents accepted');
+ok((await putFile(nathan, P1, 'sdm-x.pdf', pdf, 'application/pdf')).status === 415, 'photo names still take images only');
+ok((await putFile(nathan, P1, 'doc-y.html', new TextEncoder().encode('<script>'), 'text/html')).status === 415, 'HTML is never stored as a document');
+ok((await putFile(nathan, P1, 'doc-big.pdf', new Uint8Array(5_100_000), 'application/pdf')).status === 413, 'documents over 5 MB rejected');
+ok((await putFile(nathan, P1, 'doc-id.txt', new TextEncoder().encode('주민번호 900101-1234568'), 'text/plain')).status === 400, 'text documents with ID numbers refused');
+let us = (await call('/api/plan/file-usage', { sid: nathan, plan: P1 })).data;
+ok(us.files === 3 && us.bytes === jpg.length + pdf.length + 3, 'storage usage counts files, not parts');
+ok((await putFile(nathan, P1, 'doc-d1.pdf', new Uint8Array([0x25, 0x50, 0x44, 0x46, 1]), 'application/pdf')).status === 200, 'replacing a document');
+ok(db.prepare("SELECT COUNT(*) AS n FROM plan_files WHERE plan_id = ? AND name LIKE 'doc-d1.pdf%'").get(P1).n === 1, 'replacing removes the old parts');
+await putFile(nathan, P1, 'doc-d1.pdf', pdf, 'application/pdf');
+ok((await worker.fetch(new Request(base + '/api/plan/files/doc-d1.pdf', { method: 'DELETE', headers: { cookie: 'sid=' + nathan, origin: base, 'x-plan-id': String(P1) } }), env)).status === 200, 'editor deletes a document');
+ok(db.prepare("SELECT COUNT(*) AS n FROM plan_files WHERE plan_id = ? AND name LIKE 'doc-d1.pdf%'").get(P1).n === 0, 'deleting removes every part');
+await putFile(nathan, P1, 'doc-d1.pdf', pdf, 'application/pdf');
 const members = (await call('/api/plan/members', { sid: nathan, plan: P1 })).data.members;
 ok(members.length === 3 && members.map((m) => m.role).join() === 'owner,editor,viewer', 'members list with roles');
 const momId = members.find((m) => m.display === '엄마').id;

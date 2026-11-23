@@ -907,14 +907,35 @@
     noteOpen: 'Open a larger editor', noteDone: 'Done', noteChars: (k) => `${k.toLocaleString()} characters`, noteNone: 'No notes yet'
   });
 
+  Object.assign(L.ko, {
+    tDocs: '서류함', docTitle: '서류함 (영수증·계약서·견적서)', docHint: '영수증, 계약서, 견적서 같은 서류를 한곳에 모아두세요. 파일은 암호화해서 보관하고, 열어본 기록이 남아요. 주민등록번호가 보이는 서류(신분증, 등본, 가족관계증명서)는 올리지 마세요.',
+    dzDoc: '서류를 여기에 놓거나 눌러서 고르세요', dzDocHint: 'PDF, 사진, 한글·워드·엑셀 · 파일당 5MB까지 · 여러 개 한 번에 가능',
+    docReceipt: '영수증', docContract: '계약서', docQuote: '견적서', docOther: '기타', docAll: '전체',
+    docSearch: '제목, 메모, 업체로 찾기', docCatAll: '모든 카테고리', docNoCat: '카테고리 없음', docClearLink: '연결 필터 지우기',
+    fDocTitle: '제목', fDocKind: '종류', fDocDate: '날짜', fDocLink: '연결된 지출·업체', docNoLink: '연결 안 함', docLinkExp: '지출', docLinkVendor: '업체',
+    docOpen: '열기', docDownload: '내려받기', docEmpty: '아직 서류가 없어요. 위에 영수증이나 계약서를 놓아보세요', docEmptyFilter: '조건에 맞는 서류가 없어요',
+    docUploading: (i, k) => `올리는 중 ${i}/${k}`, docUploaded: (k) => `서류 ${k}개를 올렸어요`, docTooBig: (f) => `${f}: 5MB보다 커요`, docBadType: (f) => `${f}: 이 형식은 올릴 수 없어요`,
+    docFull: '이 플랜의 저장 공간(40MB)이 가득 찼어요', docFail: '올리지 못했어요. 다시 해주세요', docUsage: (u, m) => `${u} / ${m} 사용 (사진 포함)`, docCount: (k) => `서류 ${k}개`
+  });
+  Object.assign(L.en, {
+    tDocs: 'Documents', docTitle: 'Documents (receipts, contracts, quotes)', docHint: 'Keep receipts, contracts and quotes in one place. Files are stored encrypted and every open is logged. Don’t upload documents showing resident registration numbers (ID cards, 등본, family relation certificates).',
+    dzDoc: 'Drop documents here or click to choose', dzDocHint: 'PDF, photos, HWP, Word, Excel · up to 5 MB each · several at once',
+    docReceipt: 'Receipt', docContract: 'Contract', docQuote: 'Quote', docOther: 'Other', docAll: 'All',
+    docSearch: 'Search title, note or vendor', docCatAll: 'All categories', docNoCat: 'No category', docClearLink: 'Clear linked-item filter',
+    fDocTitle: 'Title', fDocKind: 'Type', fDocDate: 'Date', fDocLink: 'Linked expense or vendor', docNoLink: 'Not linked', docLinkExp: 'Expense', docLinkVendor: 'Vendor',
+    docOpen: 'Open', docDownload: 'Download', docEmpty: 'No documents yet. Drop a receipt or contract above', docEmptyFilter: 'No documents match these filters',
+    docUploading: (i, k) => `Uploading ${i} of ${k}`, docUploaded: (k) => `${k} document${k === 1 ? '' : 's'} uploaded`, docTooBig: (f) => `${f}: larger than 5 MB`, docBadType: (f) => `${f}: this file type can’t be uploaded`,
+    docFull: 'This plan’s storage (40 MB) is full', docFail: 'Upload failed. Please try again', docUsage: (u, m) => `${u} of ${m} used (photos included)`, docCount: (k) => `${k} document${k === 1 ? '' : 's'}`
+  });
+
   function ensurePrep() {
     S.wedding = S.wedding || ''; S.checks = S.checks || {}; S.tasks = S.tasks || [];
     S.expenses = S.expenses || []; S.split = S.split || { g: 25, b: 25, gp: 25, bp: 25 };
-    S.guests = S.guests || []; S.guestRate = S.guestRate ?? 60; S.giftLog = S.giftLog || []; S.vendors = S.vendors || [];
+    S.guests = S.guests || []; S.guestRate = S.guestRate ?? 60; S.giftLog = S.giftLog || []; S.vendors = S.vendors || []; S.documents = Array.isArray(S.documents) ? S.documents : [];
     S.sdmCatalog = S.sdmCatalog || { studios: [], dresses: [], tux: [], makeup: [], hair: [] }; S.sdm = S.sdm || window.NaduSdm.emptyPicks();
     if (!S.tab) S.tab = 'dash';
   }
-  const PREP_KEYS = ['wedding', 'checks', 'tasks', 'expenses', 'split', 'guests', 'guestRate', 'giftLog', 'vendors', 'sdm', 'sdmCatalog', 'tab', 'skin', 'collapsed'];
+  const PREP_KEYS = ['wedding', 'checks', 'tasks', 'expenses', 'split', 'guests', 'guestRate', 'giftLog', 'vendors', 'sdm', 'sdmCatalog', 'documents', 'tab', 'skin', 'collapsed'];
 
   // ---------- dates ----------
   const dayNum = (s) => { const [y, m, d] = s.split('-').map(Number); return Date.UTC(y, m - 1, d) / 864e5; };
@@ -955,7 +976,7 @@
   function rowActs(onEdit, onDel) { return el('td', {}, el('div', { class: 'rowacts' }, onEdit ? Object.assign(el('button', { type: 'button', text: T('edit') }), { onclick: onEdit }) : null, delBtn('Delete', onDel))); }
 
   // ---------- header, tabs ----------
-  const TABS = [['dash', 'tDash'], ['plan', 'tPlan'], ['list', 'tList'], ['spend', 'tSpend'], ['guests', 'tGuests'], ['gifts', 'tGifts'], ['sdm', 'tSdm'], ['vendors', 'tVendors'], ['history', 'tHistory'], ['settings', 'tSettings'], ['admin', 'tAdmin']];
+  const TABS = [['dash', 'tDash'], ['plan', 'tPlan'], ['list', 'tList'], ['spend', 'tSpend'], ['guests', 'tGuests'], ['gifts', 'tGifts'], ['sdm', 'tSdm'], ['vendors', 'tVendors'], ['docs', 'tDocs'], ['history', 'tHistory'], ['settings', 'tSettings'], ['admin', 'tAdmin']];
   function renderTabs() {
     const nav = $('tabs'); nav.innerHTML = '';
     visibleTabs().forEach(([k, lab]) => {
@@ -971,7 +992,7 @@
     TABS.forEach(([k]) => $('tab-' + k)?.setAttribute('aria-selected', String(k === S.tab)));
     renderPanel();
   }
-  function renderPanel() { ({ dash: renderDash, list: renderList, spend: renderSpend, guests: renderGuests, gifts: renderGifts, vendors: renderVendors, sdm: renderSdm, history: () => renderHistory(true), settings: renderSettings, admin: renderAdmin }[S.tab] || (() => {}))(); prepSums(); }
+  function renderPanel() { ({ dash: renderDash, list: renderList, spend: renderSpend, guests: renderGuests, gifts: renderGifts, vendors: renderVendors, docs: renderDocs, sdm: renderSdm, history: () => renderHistory(true), settings: renderSettings, admin: renderAdmin }[S.tab] || (() => {}))(); prepSums(); }
   function renderHeader() {
     const h = $('title-h1'); h.innerHTML = '';
     const pl = Sync.plan || {};
@@ -1223,7 +1244,7 @@
     const list = S.expenses.slice().sort((a, b) => (a.status === 'paid') - (b.status === 'paid') || order.indexOf(a.cat) - order.indexOf(b.cat));
     if (!list.length) emptyRow(tb, 7, T('expEmpty'));
     list.forEach((x) => tb.append(el('tr', {},
-      el('td', { class: 'l', text: cname(x.cat) }), el('td', { class: 'l vname', text: x.name }), el('td', { class: 'n', text: won(n(x.amount)) }),
+      el('td', { class: 'l', text: cname(x.cat) }), el('td', { class: 'l vname' }, x.name, clipChip('e:' + x.id)), el('td', { class: 'n', text: won(n(x.amount)) }),
       el('td', { class: 'l' }, el('span', { class: 'chip ' + (x.status === 'paid' ? 'good' : 'plan'), text: x.status === 'paid' ? T('expPaid') : T('expPlanned') })),
       el('td', { class: 'l' }, pname(x.paidBy), x.custom && x.split ? el('span', { class: 'chip', style: 'margin-left:6px', title: splitText(x.split), text: T('ownSplitChip') }) : null, x.custom && x.split ? el('div', { class: 'small', text: splitText(x.split) }) : null), noteCell(x.memo),
       rowActs(() => forms.exp.edit(x), () => { S.expenses = S.expenses.filter((y) => y !== x); save(); renderSpend(); prepSums(); }))));
@@ -1346,6 +1367,192 @@
     } catch (e) { return false; }
   }
 
+  // ---------- documents (receipts, contracts, quotes …) ----------
+  // The list lives in the synced "documents" section; the files themselves are plan files named "doc-…"
+  // (encrypted on the server, up to 5 MB each, every open/download recorded in the access log).
+  const DOC_KINDS = [['receipt', 'docReceipt', '🧾'], ['contract', 'docContract', '✍️'], ['quote', 'docQuote', '💬'], ['other', 'docOther', '📁']];
+  const DOC_EXT = { pdf: 'application/pdf', jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png', webp: 'image/webp', gif: 'image/gif', txt: 'text/plain',
+    docx: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', doc: 'application/msword',
+    xlsx: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', xls: 'application/vnd.ms-excel',
+    pptx: 'application/vnd.openxmlformats-officedocument.presentationml.presentation', hwp: 'application/x-hwp', hwpx: 'application/haansofthwp' };
+  const DOC_ACCEPT = Object.keys(DOC_EXT).map((e) => '.' + e).join(',') + ',image/*,application/pdf';
+  const DOC_INLINE = new Set(['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'image/gif', 'text/plain']);
+  const DOC_MAX = 5_000_000;
+  const docF = { kind: '', q: '', cat: '', link: '' };
+  let docEditing = null, docUsage = null, docUsageAt = 0;
+  const extOf = (name) => (String(name).toLowerCase().match(/\.([a-z0-9]{1,5})$/) || [])[1] || '';
+  const docKind = (k) => DOC_KINDS.find((x) => x[0] === k) || DOC_KINDS[3];
+  const fmtSize = (b) => b >= 1e6 ? (b / 1e6).toFixed(1).replace(/\.0$/, '') + ' MB' : Math.max(1, Math.round(b / 1e3)) + ' KB';
+  const docIcon = (d) => d.mime === 'application/pdf' ? '📄' : String(d.mime).startsWith('image/') ? '🖼' : /sheet|excel/.test(d.mime) ? '📊' : '📝';
+  function guessKind(name) {
+    if (/영수증|receipt|전표|결제|invoice|세금계산서|거래명세/i.test(name)) return 'receipt';
+    if (/계약|contract|약관|agreement/i.test(name)) return 'contract';
+    if (/견적|quote|estimate|offer|오퍼|제안/i.test(name)) return 'quote';
+    return '';
+  }
+  // "e:<expense id>" or "v:<vendor id>"
+  function linkTarget(link) {
+    if (!link) return null;
+    const [t, id] = [link.slice(0, 1), link.slice(2)];
+    if (t === 'e') { const x = S.expenses.find((y) => y.id === id); return x ? { label: x.name, cat: x.cat, type: T('docLinkExp') } : null; }
+    if (t === 'v') { const v = S.vendors.find((y) => y.id === id); return v ? { label: v.name, cat: v.cat, type: T('docLinkVendor') } : null; }
+    return null;
+  }
+  const docsFor = (link) => (S.documents || []).filter((d) => d.link === link);
+  // 📎 chip shown next to an expense or vendor: opens the Documents tab filtered to that item.
+  function clipChip(link) {
+    const k = docsFor(link).length; if (!k) return null;
+    const b = el('button', { type: 'button', class: 'chipbtn clip', title: T('docCount')(k), 'aria-label': T('docCount')(k), text: '📎 ' + k });
+    b.addEventListener('click', () => { Object.assign(docF, { kind: '', q: '', cat: '', link }); S.tab = 'docs'; save(); applyTab(); window.scrollTo({ top: 0 }); });
+    return b;
+  }
+  const docHref = (d, dl) => '/api/plan/files/' + encodeURIComponent(d.file) + '?plan=' + Sync.planId + '&fn=' + encodeURIComponent(d.fname || d.title || 'document') + (dl ? '&dl=1' : '');
+  async function refreshDocUsage(force) {
+    if (!Sync.planId || (!force && Date.now() - docUsageAt < 30000)) return;
+    docUsageAt = Date.now();
+    const r = await api('/plan/file-usage'); if (r.ok) { docUsage = r.data; showDocUsage(); }
+  }
+  function showDocUsage() { const u = $('doc-usage'); if (u) u.textContent = docUsage ? T('docUsage')(fmtSize(docUsage.bytes), fmtSize(docUsage.maxBytes)) : ''; }
+  // Phone photos of receipts are often 3–8 MB: resize to a readable 2000px JPEG before upload.
+  async function shrinkDoc(file) {
+    try {
+      const bmp = await createImageBitmap(file);
+      const sc = Math.min(1, 2000 / Math.max(bmp.width, bmp.height));
+      if (sc === 1 && file.size < 1_500_000) return file;
+      const c = document.createElement('canvas'); c.width = Math.round(bmp.width * sc); c.height = Math.round(bmp.height * sc);
+      c.getContext('2d').drawImage(bmp, 0, 0, c.width, c.height);
+      return await new Promise((res) => c.toBlob((b) => res(b || file), 'image/jpeg', 0.85));
+    } catch (e) { return file; }
+  }
+  async function uploadDocs(files) {
+    const list = [...files]; let done = 0, last = null;
+    for (const fl of list) {
+      const ext = extOf(fl.name), mime = DOC_EXT[ext] || (DOC_INLINE.has(fl.type) ? fl.type : '');
+      if (!mime) { toast(T('docBadType')(fl.name)); continue; }
+      let blob = fl, outExt = ext || 'bin';
+      if (/^image\/(jpeg|png|webp)$/.test(mime)) { blob = await shrinkDoc(fl); if (blob !== fl) outExt = 'jpg'; }
+      const type = blob === fl ? mime : 'image/jpeg';
+      if (blob.size > DOC_MAX) { toast(T('docTooBig')(fl.name)); continue; }
+      toast(T('docUploading')(done + 1, list.length));
+      const id = uid() + uid(), file = `doc-${id}.${outExt}`.toLowerCase();
+      let r;
+      try { r = await fetch('/api/plan/files/' + file, { method: 'PUT', credentials: 'same-origin', headers: { 'content-type': type, 'x-plan-id': String(Sync.planId) }, body: blob }); }
+      catch (e) { r = { ok: false, status: 0 }; }
+      if (!r.ok) {
+        const code = r.status === 413 ? (await r.json().catch(() => ({}))).error : r.status === 415 ? 'type' : r.status === 400 ? 'id' : '';
+        toast(code === 'plan_storage_full' ? T('docFull') : code === 'too_large' ? T('docTooBig')(fl.name) : code === 'type' ? T('docBadType')(fl.name) : code === 'id' ? T('gErr').id_number : T('docFail'));
+        continue;
+      }
+      const base = fl.name.replace(/\.[^.]+$/, '').trim() || fl.name;
+      const lt = linkTarget(docF.link);
+      const d = { id, file, fname: base + '.' + outExt, mime: type, size: blob.size, title: base.slice(0, 80), kind: docF.kind || guessKind(fl.name) || 'other',
+        cat: docF.cat || (lt ? lt.cat : ''), link: docF.link || '', date: new Date().toISOString().slice(0, 10), note: '', addedAt: new Date().toISOString(), addedBy: Sync.me ? Sync.me.id : null };
+      S.documents.push(d); done++; last = d;
+    }
+    if (done) { save(); toast(T('docUploaded')(done)); if (done === 1 && list.length === 1) docEditing = last.id; refreshDocUsage(true); }
+    renderDocs();
+  }
+  function docForm(d) {
+    const f = el('form', { class: 'entry doc-edit editing' });
+    const inp = (name, attrs = {}) => { const i = el('input', { name, id: 'doc-' + name, ...attrs }); i.value = d[name] ?? ''; return i; };
+    const sel = (name, list) => { const s = el('select', { name, id: 'doc-' + name }, list); s.value = d[name] ?? ''; return s; };
+    const lab = (text, node, wide) => el('label', { class: 'f' + (wide ? ' wide' : ''), for: node.id }, text, node);
+    const linkSel = el('select', { name: 'link', id: 'doc-link' },
+      el('option', { value: '', text: T('docNoLink') }),
+      S.expenses.length ? el('optgroup', { label: T('docLinkExp') }, S.expenses.map((x) => el('option', { value: 'e:' + x.id, text: `${x.name} · ${won(n(x.amount))}` }))) : null,
+      S.vendors.length ? el('optgroup', { label: T('docLinkVendor') }, S.vendors.map((v) => el('option', { value: 'v:' + v.id, text: `${v.name} · ${cname(v.cat)}` }))) : null);
+    linkSel.value = d.link || '';
+    const cat = sel('cat', [el('option', { value: '', text: T('docNoCat') }), ...BCATS.map(([k]) => el('option', { value: k, text: cname(k) }))]);
+    linkSel.addEventListener('change', () => { const t = linkTarget(linkSel.value); if (t && !cat.value) cat.value = t.cat; });
+    const ta = el('textarea', { name: 'note', id: 'doc-note' }); ta.value = d.note || '';
+    f.append(lab(T('fDocTitle'), inp('title', { maxlength: 80, required: true }), true),
+      lab(T('fDocKind'), sel('kind', DOC_KINDS.map(([k, key]) => el('option', { value: k, text: T(key) })))),
+      lab(T('fDocDate'), inp('date', { type: 'date' })),
+      lab(T('fCat'), cat), lab(T('fDocLink'), linkSel, true),
+      el('label', { class: 'f wide', for: 'doc-note' }, T('fMemo'), noteWrap(ta, T('fMemo'))));
+    const cancel = el('button', { type: 'button', text: T('cancel') });
+    cancel.addEventListener('click', () => { docEditing = null; renderDocs(); });
+    f.append(el('div', { class: 'acts' }, el('button', { type: 'submit', class: 'primary', text: T('update') }), cancel));
+    f.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const v = (k) => f.elements[k].value.trim();
+      Object.assign(d, { title: v('title') || d.fname, kind: v('kind'), date: v('date'), cat: v('cat'), link: v('link'), note: ta.value });
+      docEditing = null; save(); renderDocs();
+    });
+    return f;
+  }
+  function renderDocs() {
+    const writable = !!(Sync.plan && Sync.plan.writable);
+    const up = $('doc-upload');
+    if (up) {
+      up.innerHTML = ''; up.hidden = !writable;
+      if (writable) {
+        const fi = el('input', { type: 'file', multiple: true, accept: DOC_ACCEPT, id: 'doc-file' });
+        fi.addEventListener('change', () => { const fs = [...fi.files]; fi.value = ''; if (fs.length) uploadDocs(fs); });
+        up.append(fi);
+        window.NaduDrop(fi, { text: T('dzDoc'), hint: T('dzDocHint'), icon: '📎', onReject: (fl) => toast(T('docBadType')(fl.name)) });
+      }
+    }
+    const all = S.documents;
+    // filters: kind chips first (what is shown), then search / category / linked item
+    const fb = $('doc-filters'); fb.innerHTML = '';
+    const chips = el('div', { class: 'chiprow' });
+    [['', 'docAll'], ...DOC_KINDS].forEach(([k, key]) => {
+      const cnt = k ? all.filter((d) => d.kind === k).length : all.length;
+      const b = el('button', { type: 'button', class: 'chipbtn', 'aria-pressed': String(docF.kind === k) }, T(key), el('span', { class: 'n', text: ' ' + cnt }));
+      b.addEventListener('click', () => { docF.kind = k; renderDocs(); });
+      chips.append(b);
+    });
+    const q = el('input', { type: 'search', id: 'doc-q', placeholder: T('docSearch'), 'aria-label': T('docSearch') }); q.value = docF.q;
+    q.addEventListener('input', () => { docF.q = q.value; renderDocList(); });
+    const usedCats = BCATS.filter(([k]) => all.some((d) => d.cat === k));
+    const cs = el('select', { id: 'doc-cat', 'aria-label': T('fCat') }, el('option', { value: '', text: T('docCatAll') }), usedCats.map(([k]) => el('option', { value: k, text: cname(k) })));
+    cs.value = docF.cat; cs.addEventListener('change', () => { docF.cat = cs.value; renderDocList(); });
+    const row = el('div', { class: 'searchrow' }, q, cs);
+    if (docF.link) {
+      const t = linkTarget(docF.link);
+      const clr = el('button', { type: 'button', class: 'chipbtn', 'aria-pressed': 'true', text: `📎 ${t ? t.label : '—'} ✕`, title: T('docClearLink') });
+      clr.addEventListener('click', () => { docF.link = ''; renderDocs(); });
+      row.append(clr);
+    }
+    fb.append(chips, row);
+    renderDocList();
+    showDocUsage(); refreshDocUsage();
+  }
+  function renderDocList() {
+    const writable = !!(Sync.plan && Sync.plan.writable);
+    const box = $('doc-list'); box.innerHTML = '';
+    const q = docF.q.trim().toLowerCase();
+    const list = S.documents.filter((d) => (!docF.kind || d.kind === docF.kind) && (!docF.cat || d.cat === docF.cat) && (!docF.link || d.link === docF.link)
+      && (!q || [d.title, d.fname, d.note, (linkTarget(d.link) || {}).label].join(' ').toLowerCase().includes(q)))
+      .sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')) || String(b.addedAt).localeCompare(String(a.addedAt)));
+    if (!list.length) { box.append(el('p', { class: 'empty-row doc-empty', text: S.documents.length ? T('docEmptyFilter') : T('docEmpty') })); return; }
+    list.forEach((d) => {
+      if (docEditing === d.id && writable) { box.append(docForm(d)); return; }
+      const [, key, emoji] = docKind(d.kind), lt = linkTarget(d.link);
+      const meta = [d.cat ? cname(d.cat) : '', d.date ? fmtDay(dayNum(d.date)) : '', fmtSize(n(d.size))].filter(Boolean).join(' · ');
+      const acts = el('div', { class: 'doc-acts' });
+      if (DOC_INLINE.has(d.mime)) acts.append(el('a', { class: 'btn', href: docHref(d), target: '_blank', rel: 'noopener', text: T('docOpen') }));
+      acts.append(el('a', { class: 'btn', href: docHref(d, true), download: d.fname || '', text: T('docDownload') }));
+      if (writable) {
+        const eb = el('button', { type: 'button', text: T('edit') }); eb.addEventListener('click', () => { docEditing = d.id; renderDocList(); });
+        acts.append(eb, delBtn(T('del'), async () => {
+          S.documents = S.documents.filter((x) => x.id !== d.id); save(); renderDocs();
+          try { await fetch('/api/plan/files/' + encodeURIComponent(d.file), { method: 'DELETE', credentials: 'same-origin', headers: { 'x-plan-id': String(Sync.planId) } }); } catch (e) {}
+          refreshDocUsage(true);
+        }));
+      }
+      box.append(el('article', { class: 'doc-card' },
+        el('div', { class: 'doc-ic', 'aria-hidden': 'true', text: docIcon(d) }),
+        el('div', { class: 'doc-body' },
+          el('div', { class: 'doc-top' }, el('b', { class: 'doc-title', text: d.title || d.fname }), el('span', { class: 'chip k-' + d.kind, text: `${emoji} ${T(key)}` })),
+          el('div', { class: 'small', text: meta }),
+          lt ? el('div', { class: 'small doc-link', text: `📎 ${lt.type}: ${lt.label}` }) : null,
+          d.note ? el('div', { class: 'note-clamp small', text: d.note }) : null,
+          acts)));
+    });
+  }
+
   function renderVendors() {
     const tbl = $('vendor-table'); tbl.innerHTML = '';
     thead(tbl, [[T('fVendor'), 'l'], [T('fQuote')], [T('fFinal')], [T('savedL')], [T('fMemo'), 'l'], [T('pickL'), 'l'], ['']]);
@@ -1366,7 +1573,7 @@
         }
         const saved = n(v.quote) && n(v.final) ? n(v.quote) - n(v.final) : 0;
         tb.append(el('tr', { class: (low != null && fin === low ? 'best ' : '') + (v.picked ? 'picked' : '') },
-          el('td', { class: 'l vname', text: v.name }), el('td', { class: 'n', text: n(v.quote) ? won(n(v.quote)) : '–' }), el('td', { class: 'n fin', text: fin ? won(fin) : '–' }),
+          el('td', { class: 'l vname' }, v.name, clipChip('v:' + v.id)), el('td', { class: 'n', text: n(v.quote) ? won(n(v.quote)) : '–' }), el('td', { class: 'n fin', text: fin ? won(fin) : '–' }),
           el('td', { class: 'n ' + (saved > 0 ? 'pos' : ''), text: saved ? won(saved) : '–' }), noteCell(v.memo), cell,
           rowActs(() => forms.vendor.edit(v), () => { S.vendors = S.vendors.filter((y) => y !== v); save(); renderVendors(); prepSums(); })));
       });
@@ -1419,7 +1626,7 @@
   // against the latest version; otherwise the server returns the newer copy, we merge both people's
   // edits (record by record, field by field) and try again. Every saved version is kept as history.
   const SHARED = ['budget', 'selectedVenue', 'selectedLoan', 'venues', 'nonVenue', 'afterCosts', 'honsu', 'categories', 'loans', 'seeded',
-    'wedding', 'checks', 'tasks', 'expenses', 'split', 'guests', 'guestRate', 'giftLog', 'vendors', 'sdm', 'sdmCatalog'];
+    'wedding', 'checks', 'tasks', 'expenses', 'split', 'guests', 'guestRate', 'giftLog', 'vendors', 'sdm', 'sdmCatalog', 'documents'];
   const PREFS = ['lang', 'skin', 'tab', 'collapsed', 'report', 'planId'];
   const PREF_KEY = 'nadu-wedding-prefs-v1';
   const Sync = { me: null, plans: [], planId: null, plan: null, users: {}, base: {}, ver: {}, seq: 0, timer: null, inflight: false, again: false, merged: false, poller: null, lastEdit: null, status: 'idle' };
@@ -1437,7 +1644,7 @@
     histHelp: '모든 저장은 항목별 버전으로 남아요. 이전 버전으로 되돌려도 지금 버전은 기록에 그대로 남습니다.', hWhen: '시각', hWho: '수정한 사람', hWhat: '항목', hVer: '버전', hAct: '종류',
     aEdit: '수정', aRestore: '되돌림', aImport: '가져오기', restoreL: '이 버전으로 되돌리기', restoreQ: '정말 되돌릴까요?', restored: '이전 버전으로 되돌렸어요', more: '더 보기', histEmpty: '아직 기록이 없어요',
     filesLoaded: (a, b) => `사진 ${a}/${b}장을 올렸어요`, exportTitle: '내보내기', exBackup: '전체 백업 (.sql)', exJson: '전체 데이터 (JSON)', exExp: '지출 CSV', exGuests: '하객 CSV', exGifts: '축의금 CSV', exVendors: '업체 CSV', exHist: '변경 기록 CSV',
-    keyLabels: { budget: '예산 기준', selectedVenue: '선택한 예식장', selectedLoan: '선택한 대출', venues: '예식장 옵션', nonVenue: '예식장 외 비용', afterCosts: '입주 비용', honsu: '혼수', categories: '추가 카테고리', loans: '대출 옵션', seeded: '기본 옵션', wedding: '예식 날짜', checks: '체크리스트 완료', tasks: '직접 추가한 할 일', expenses: '지출 내역', split: '분담 비율', guests: '하객 명단', guestRate: '미정 참석률', giftLog: '받은 축의금', vendors: '업체 비교', sdm: '스드메 조합', sdmCatalog: '스드메 업체 목록' }
+    keyLabels: { budget: '예산 기준', selectedVenue: '선택한 예식장', selectedLoan: '선택한 대출', venues: '예식장 옵션', nonVenue: '예식장 외 비용', afterCosts: '입주 비용', honsu: '혼수', categories: '추가 카테고리', loans: '대출 옵션', seeded: '기본 옵션', wedding: '예식 날짜', checks: '체크리스트 완료', tasks: '직접 추가한 할 일', expenses: '지출 내역', split: '분담 비율', guests: '하객 명단', guestRate: '미정 참석률', giftLog: '받은 축의금', vendors: '업체 비교', sdm: '스드메 조합', sdmCatalog: '스드메 업체 목록', documents: '서류함' }
   });
   Object.assign(L.en, {
     tHistory: 'History', printNow: 'Print · Save as PDF', gUser: 'Username', gPass: 'Password', gDisplay: 'Display name', gInvite: 'Invite code', gLogin: 'Sign in', gSignup: 'Create account',
@@ -1448,7 +1655,7 @@
     histHelp: 'Every save is kept as a version of that section. Restoring an old version adds a new version, so nothing is lost.', hWhen: 'When', hWho: 'Who', hWhat: 'Section', hVer: 'Version', hAct: 'Type',
     aEdit: 'Edit', aRestore: 'Restore', aImport: 'Import', restoreL: 'Restore this version', restoreQ: 'Restore it?', restored: 'Restored the earlier version', more: 'Load more', histEmpty: 'No history yet',
     filesLoaded: (a, b) => `Uploaded ${a} of ${b} photos`, exportTitle: 'Export', exBackup: 'Full backup (.sql)', exJson: 'All data (JSON)', exExp: 'Expenses CSV', exGuests: 'Guests CSV', exGifts: 'Gift money CSV', exVendors: 'Vendors CSV', exHist: 'History CSV',
-    keyLabels: { budget: 'Budget inputs', selectedVenue: 'Selected venue', selectedLoan: 'Selected loan', venues: 'Venue options', nonVenue: 'Non-venue costs', afterCosts: 'Move-in costs', honsu: '혼수', categories: 'Extra categories', loans: 'Loan options', seeded: 'Default options', wedding: 'Wedding date', checks: 'Checklist ticks', tasks: 'Our own tasks', expenses: 'Expenses', split: 'Split ratio', guests: 'Guest list', guestRate: 'Maybe attendance rate', giftLog: 'Gift money', vendors: 'Vendors', sdm: 'Studio/dress combo', sdmCatalog: 'Studio/dress listings' }
+    keyLabels: { budget: 'Budget inputs', selectedVenue: 'Selected venue', selectedLoan: 'Selected loan', venues: 'Venue options', nonVenue: 'Non-venue costs', afterCosts: 'Move-in costs', honsu: '혼수', categories: 'Extra categories', loans: 'Loan options', seeded: 'Default options', wedding: 'Wedding date', checks: 'Checklist ticks', tasks: 'Our own tasks', expenses: 'Expenses', split: 'Split ratio', guests: 'Guest list', guestRate: 'Maybe attendance rate', giftLog: 'Gift money', vendors: 'Vendors', sdm: 'Studio/dress combo', sdmCatalog: 'Studio/dress listings', documents: 'Documents' }
   });
 
   // ---------- three-way merge ----------

@@ -19,7 +19,7 @@ import {
 
 const SHARED_KEYS = new Set([
   'budget', 'selectedVenue', 'selectedLoan', 'venues', 'nonVenue', 'afterCosts', 'honsu', 'categories', 'loans', 'seeded',
-  'wedding', 'checks', 'tasks', 'expenses', 'split', 'guests', 'guestRate', 'giftLog', 'vendors', 'sdm', 'sdmCatalog'
+  'wedding', 'checks', 'tasks', 'expenses', 'split', 'guests', 'guestRate', 'giftLog', 'vendors', 'sdm', 'sdmCatalog', 'documents'
 ]);
 const SESSION_DAYS = 30;
 const MAX_DOC_BYTES = 400_000;
@@ -534,40 +534,87 @@ async function putDoc(req, env, ctx, key) {
   if (r.status === 200 && isImport) await audit(env, req, { userId: ctx.userId, planId: ctx.plan.id, action: 'import', target: key });
   return json(r.body, r.status);
 }
-// ---------- plan files (photos) ----------
+// ---------- plan files (스드메 photos, and documents: receipts, contracts, quotes) ----------
+// Photos: "sdm-…" names, images up to 700 KB. Documents: "doc-…" names, up to 5 MB, stored in 700 KB parts
+// ("doc-x.pdf", "doc-x.pdf.p1", …) because a D1 value is capped near 2 MB after base64 + encryption.
 const FILE_NAME = /^[a-z0-9][a-z0-9._-]{0,63}$/;
 const FILE_TYPES = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
-const MAX_FILE_BYTES = 700_000, MAX_PLAN_FILES = 400, MAX_PLAN_FILE_BYTES = 40_000_000;
+const DOC_TYPES = new Set([...FILE_TYPES, 'application/pdf', 'text/plain',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/msword',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.presentationml.presentation', 'application/x-hwp', 'application/haansofthwp']);
+const INLINE_TYPES = new Set([...FILE_TYPES, 'application/pdf', 'text/plain']);
+const MAX_FILE_BYTES = 700_000, MAX_DOC_FILE_BYTES = 5_000_000, PART_BYTES = 700_000, MAX_PLAN_FILES = 400, MAX_PLAN_FILE_BYTES = 40_000_000;
+const PART_MIME = 'application/x-nadu-part';
+const isDocName = (name) => name.startsWith('doc-');
 function b64encode(bytes) { let s = ''; for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000)); return btoa(s); }
 function b64decode(str) { const bin = atob(str), out = new Uint8Array(bin.length); for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i); return out; }
-async function getFile(env, ctx, name) {
-  if (!FILE_NAME.test(name)) return err(404, 'not_found');
-  const f = await env.DB.prepare('SELECT mime, data, updated_at FROM plan_files WHERE plan_id = ? AND name = ?').bind(ctx.plan.id, name).first();
+const safeFileName = (s) => String(s || '').replace(/[\u0000-\u001f"\\/:*?<>|]+/g, ' ').trim().slice(0, 120) || 'document';
+async function getFile(req, env, ctx, name, url) {
+  if (!FILE_NAME.test(name) || /\.p\d+$/.test(name)) return err(404, 'not_found');
+  const f = await env.DB.prepare('SELECT mime, size, data, updated_at FROM plan_files WHERE plan_id = ? AND name = ?').bind(ctx.plan.id, name).first();
   if (!f) return err(404, 'not_found');
-  return new Response(b64decode(await openText(env, f.data)), { headers: {
-    'content-type': f.mime, 'cache-control': 'private, max-age=300', 'x-content-type-options': 'nosniff',
-    'content-security-policy': "default-src 'none'; sandbox", 'last-modified': new Date(f.updated_at).toUTCString() } });
+  let bytes = b64decode(await openText(env, f.data));
+  const headers = { 'content-type': f.mime, 'x-content-type-options': 'nosniff', 'last-modified': new Date(f.updated_at).toUTCString() };
+  if (isDocName(name)) {
+    if (bytes.length < f.size) {
+      const { results } = await env.DB.prepare("SELECT name, data FROM plan_files WHERE plan_id = ? AND name LIKE ? AND mime = ?").bind(ctx.plan.id, name + '.p%', PART_MIME).all();
+      const parts = results.sort((a, b) => Number(a.name.split('.p').pop()) - Number(b.name.split('.p').pop()));
+      const all = new Uint8Array(f.size); all.set(bytes, 0); let at = bytes.length;
+      for (const pr of parts) { const b = b64decode(await openText(env, pr.data)); all.set(b, at); at += b.length; }
+      if (at !== f.size) return err(500, 'file_incomplete');
+      bytes = all;
+    }
+    // A document is a data download: logged in the access log (접속기록).
+    await audit(env, req, { userId: ctx.userId, planId: ctx.plan.id, action: 'doc_download', target: name });
+    const fn = safeFileName(url.searchParams.get('fn'));
+    const inline = INLINE_TYPES.has(f.mime) && !url.searchParams.get('dl');
+    headers['content-disposition'] = `${inline ? 'inline' : 'attachment'}; filename*=UTF-8''${encodeURIComponent(fn)}`;
+    headers['cache-control'] = 'private, no-store';
+    // PDFs need the browser's viewer, which a sandboxed page cannot use; nothing here runs page scripts.
+    headers['content-security-policy'] = f.mime === 'application/pdf' ? "default-src 'none'; frame-ancestors 'none'" : "default-src 'none'; img-src 'self'; style-src 'unsafe-inline'; sandbox";
+  } else {
+    headers['cache-control'] = 'private, max-age=300';
+    headers['content-security-policy'] = "default-src 'none'; sandbox";
+  }
+  return new Response(bytes, { headers });
 }
 async function putFile(req, env, ctx, name, url) {
   if (!ctx.view.writable) return readOnly(ctx);
   if (url.searchParams.get('import') && !ctx.view.io) return err(402, 'addon_required', { addon: 'io' });
-  if (!FILE_NAME.test(name)) return err(400, 'bad_name');
+  if (!FILE_NAME.test(name) || /\.p\d+$/.test(name)) return err(400, 'bad_name');
+  const doc = isDocName(name);
   const mime = (req.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
-  if (!FILE_TYPES.has(mime)) return err(415, 'unsupported_type');
+  if (!(doc ? DOC_TYPES : FILE_TYPES).has(mime)) return err(415, 'unsupported_type');
   const bytes = new Uint8Array(await req.arrayBuffer());
   if (!bytes.length) return err(400, 'empty');
-  if (bytes.length > MAX_FILE_BYTES) return err(413, 'too_large');
-  const tot = await env.DB.prepare('SELECT COUNT(*) AS n, COALESCE(SUM(size), 0) AS b FROM plan_files WHERE plan_id = ? AND name != ?').bind(ctx.plan.id, name).first();
+  if (bytes.length > (doc ? MAX_DOC_FILE_BYTES : MAX_FILE_BYTES)) return err(413, 'too_large');
+  // Resident/foreigner registration numbers are never stored; plain text can be checked, other files carry a warning in the app.
+  if (mime === 'text/plain' && findRrn(new TextDecoder().decode(bytes))) return err(400, 'id_number');
+  const tot = await env.DB.prepare('SELECT COUNT(*) AS n, COALESCE(SUM(size), 0) AS b FROM plan_files WHERE plan_id = ? AND mime != ? AND name != ? AND name NOT LIKE ?')
+    .bind(ctx.plan.id, PART_MIME, name, name + '.p%').first();
   if (tot.n >= MAX_PLAN_FILES || tot.b + bytes.length > MAX_PLAN_FILE_BYTES) return err(413, 'plan_storage_full');
-  await env.DB.prepare('INSERT OR REPLACE INTO plan_files (plan_id, name, mime, size, data, updated_by, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
-    .bind(ctx.plan.id, name, mime, bytes.length, await sealText(env, b64encode(bytes)), ctx.userId, nowIso()).run();
+  const at = nowIso(), ins = 'INSERT INTO plan_files (plan_id, name, mime, size, data, updated_by, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)';
+  const stmts = [env.DB.prepare('DELETE FROM plan_files WHERE plan_id = ? AND (name = ? OR (name LIKE ? AND mime = ?))').bind(ctx.plan.id, name, name + '.p%', PART_MIME)];
+  for (let i = 0, k = 0; i < bytes.length; i += PART_BYTES, k++) {
+    const chunk = bytes.subarray(i, i + PART_BYTES), sealed = await sealText(env, b64encode(chunk));
+    stmts.push(k === 0 ? env.DB.prepare(ins).bind(ctx.plan.id, name, mime, bytes.length, sealed, ctx.userId, at)
+      : env.DB.prepare(ins).bind(ctx.plan.id, `${name}.p${k}`, PART_MIME, 0, sealed, ctx.userId, at));
+  }
+  await env.DB.batch(stmts);
+  if (doc) await audit(env, req, { userId: ctx.userId, planId: ctx.plan.id, action: 'doc_upload', target: name, detail: `${mime} ${bytes.length}` });
   return json({ ok: true, name, size: bytes.length });
 }
-async function deleteFile(env, ctx, name) {
+async function deleteFile(req, env, ctx, name) {
   if (!ctx.view.writable) return readOnly(ctx);
-  if (!FILE_NAME.test(name)) return err(400, 'bad_name');
-  await env.DB.prepare('DELETE FROM plan_files WHERE plan_id = ? AND name = ?').bind(ctx.plan.id, name).run();
+  if (!FILE_NAME.test(name) || /\.p\d+$/.test(name)) return err(400, 'bad_name');
+  await env.DB.prepare('DELETE FROM plan_files WHERE plan_id = ? AND (name = ? OR (name LIKE ? AND mime = ?))').bind(ctx.plan.id, name, name + '.p%', PART_MIME).run();
+  if (isDocName(name)) await audit(env, req, { userId: ctx.userId, planId: ctx.plan.id, action: 'doc_delete', target: name });
   return json({ ok: true });
+}
+async function fileUsage(env, ctx) {
+  const r = await env.DB.prepare('SELECT COUNT(*) AS n, COALESCE(SUM(size), 0) AS b FROM plan_files WHERE plan_id = ? AND mime != ?').bind(ctx.plan.id, PART_MIME).first();
+  return json({ files: r.n, bytes: r.b, maxBytes: MAX_PLAN_FILE_BYTES, maxFiles: MAX_PLAN_FILES, maxDoc: MAX_DOC_FILE_BYTES });
 }
 
 async function changes(env, ctx, url) {
@@ -843,10 +890,11 @@ async function api(req, env, url) {
   }
   if (fm) {
     const name = decodeURIComponent(fm[1]);
-    if (m === 'GET') return getFile(env, ctx, name);
+    if (m === 'GET') return getFile(req, env, ctx, name, url);
     if (m === 'PUT') return putFile(req, env, ctx, name, url);
-    if (m === 'DELETE') return deleteFile(env, ctx, name);
+    if (m === 'DELETE') return deleteFile(req, env, ctx, name);
   }
+  if (p === '/api/plan/file-usage' && m === 'GET') return fileUsage(env, ctx);
   if (p.startsWith('/api/doc/') && m === 'PUT') return putDoc(req, env, ctx, decodeURIComponent(p.slice('/api/doc/'.length)));
   return err(404, 'not_found');
 }

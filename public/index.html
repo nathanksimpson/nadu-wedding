@@ -308,6 +308,23 @@ form.entry .split-f.hide { display: none; }
 form.entry .check.wide { grid-column: 1 / -1; }
 form.entry .split-info { grid-column: 1 / -1; font-size: 14px; }
 form.entry .split-info.bad b { color: var(--bad); }
+/* documents */
+.doc-filters { display: flex; flex-direction: column; gap: 10px; }
+.chiprow { display: flex; gap: 6px; flex-wrap: wrap; }
+.doc-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 22rem), 1fr)); gap: 10px; }
+.doc-card { display: flex; gap: 12px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; min-width: 0; }
+.doc-ic { font-size: 26px; line-height: 1; padding-top: 2px; }
+.doc-body { display: flex; flex-direction: column; gap: 4px; min-width: 0; flex: 1; }
+.doc-top { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+.doc-title { overflow-wrap: anywhere; }
+.doc-link { color: var(--ink); }
+.doc-acts { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; align-items: center; }
+.doc-acts a.btn { display: inline-flex; align-items: center; text-decoration: none; border: 1px solid var(--line); border-radius: 8px; padding: 5px 12px; font-size: 13px; color: var(--ink); background: var(--surface); }
+.doc-acts a.btn:hover { border-color: var(--accent); }
+.chip.k-receipt { background: var(--good-soft); color: var(--good); } .chip.k-contract { background: var(--accent-soft); color: var(--accent); } .chip.k-quote { background: var(--gold-soft); color: var(--gold); }
+.doc-edit { grid-column: 1 / -1; }
+.doc-empty { padding: 18px; text-align: center; }
+.chipbtn.clip { padding: 1px 8px; font-size: 12px; margin-left: 6px; }
 .searchrow { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
 .searchrow input { flex: 1 1 200px; width: auto; }
 .searchrow select { width: auto; }
@@ -608,6 +625,16 @@ body.gated .wrap { visibility: hidden; }
       <p class="small" data-t="vHint" style="margin:0"></p>
       <div id="vendor-form-host"></div>
       <div class="panel scroll"><table id="vendor-table"></table></div>
+    </section>
+  </div>
+
+  <div class="tabpanel app" data-panel="docs">
+    <section id="docs" class="app">
+      <div class="sec-head"><h2 data-t="docTitle"></h2><span class="small" id="doc-usage"></span></div>
+      <p class="small" data-t="docHint" style="margin:0"></p>
+      <div id="doc-upload"></div>
+      <div id="doc-filters" class="doc-filters"></div>
+      <div id="doc-list" class="doc-list"></div>
     </section>
   </div>
 

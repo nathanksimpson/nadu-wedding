@@ -54,7 +54,7 @@
     const open = () => { if (!disabled()) input.click(); };
     zone.addEventListener('click', (e) => { if (e.target !== input) open(); });
     zone.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); open(); } });
-    input.addEventListener('change', () => { const f = input.files && input.files[0]; fileName.textContent = f ? f.name : ''; });
+    input.addEventListener('change', () => { const fs = input.files || []; fileName.textContent = fs.length > 1 ? `${fs[0].name} +${fs.length - 1}` : fs[0] ? fs[0].name : ''; });
     let depth = 0;
     zone.addEventListener('dragenter', (e) => { if (disabled()) return; e.preventDefault(); depth++; zone.classList.add('over'); });
     zone.addEventListener('dragover', (e) => { if (disabled()) return; e.preventDefault(); e.dataTransfer.dropEffect = 'copy'; });
@@ -62,10 +62,13 @@
     zone.addEventListener('drop', (e) => {
       e.preventDefault(); depth = 0; zone.classList.remove('over');
       if (disabled()) return;
-      const f = e.dataTransfer.files && e.dataTransfer.files[0];
-      if (!f) return;
-      if (!accepts(input, f)) { zone.classList.add('bad'); setTimeout(() => zone.classList.remove('bad'), 1200); if (opts.onReject) opts.onReject(f); return; }
-      const dt = new DataTransfer(); dt.items.add(f);
+      // One file normally; every accepted file when the input has the "multiple" attribute.
+      const files = [...(e.dataTransfer.files || [])].slice(0, input.multiple ? undefined : 1);
+      if (!files.length) return;
+      const good = files.filter((f) => accepts(input, f)), bad = files.filter((f) => !accepts(input, f));
+      if (bad.length) { zone.classList.add('bad'); setTimeout(() => zone.classList.remove('bad'), 1200); if (opts.onReject) bad.forEach((f) => opts.onReject(f)); }
+      if (!good.length) return;
+      const dt = new DataTransfer(); good.forEach((f) => dt.items.add(f));
       input.files = dt.files;
       input.dispatchEvent(new Event('change', { bubbles: true }));
     });
