@@ -928,14 +928,35 @@
     docFull: 'This plan’s storage (40 MB) is full', docFail: 'Upload failed. Please try again', docUsage: (u, m) => `${u} of ${m} used (photos included)`, docCount: (k) => `${k} document${k === 1 ? '' : 's'}`
   });
 
+  Object.assign(L.ko, {
+    expPartial: '부분 결제', payBtn: (k) => k ? `결제 ${k}건` : '결제 나누기', payTitle: '결제 내역', payAdd: '결제 추가', payWho: '낸 사람', payDate: '날짜', payClose: '닫기',
+    payPaid: (a, b) => `${a} / ${b} 결제`, payLeft: (v) => `남은 금액 ${v}`, payOver: (v) => `${v} 더 냈어요`, payFull: '다 냈어요', payNone: '아직 결제가 없어요', payMemoPh: '예: 계약금, 잔금',
+    payHint: '계약금·잔금처럼 나눠 내거나 여러 사람이 같이 낸 경우 하나씩 넣으세요. 다 내면 상태가 자동으로 결제 완료가 돼요.',
+    cTitle: '누가 얼마 냈나', cHint: '사람별로 낸 돈과 주고받은 돈을 모았어요. 눌러서 카테고리와 항목별로 볼 수 있어요.',
+    cContrib: '낸 돈', cOf: (p) => `전체의 ${p}%`, cNone: '아직 없어요', cGiven: '준 돈', cReceived: '받은 돈', cPaidFor: '결제', cKind: '구분',
+    cMoneyTitle: '주고받은 돈', cMoneyHint: '부모님이 결혼 자금으로 준 돈처럼, 지출이 아니라 사람 사이에 오간 돈이에요. 준 사람이 낸 돈으로 계산되고, 받은 사람이 낸 돈에서는 빠져요.',
+    fFrom: '준 사람', fTo: '받은 사람', toCouple: '신랑·신부 (반씩)', cMoneyEmpty: '주고받은 돈이 없어요', cSameParty: '준 사람과 받은 사람이 같아요', cMemoPh: '예: 결혼 자금, 혼수 지원',
+    exContrib: '기여 내역 CSV'
+  });
+  Object.assign(L.en, {
+    expPartial: 'Part paid', payBtn: (k) => k ? `${k} payment${k === 1 ? '' : 's'}` : 'Split payment', payTitle: 'Payments', payAdd: 'Add payment', payWho: 'Paid by', payDate: 'Date', payClose: 'Close',
+    payPaid: (a, b) => `${a} of ${b} paid`, payLeft: (v) => `${v} left`, payOver: (v) => `${v} overpaid`, payFull: 'Fully paid', payNone: 'No payments yet', payMemoPh: 'e.g. deposit, balance',
+    payHint: 'Add each payment separately, like a deposit and the balance, or when several people pay. The item switches to Paid once it’s covered.',
+    cTitle: 'Who contributed what', cHint: 'Everything each person has paid or given. Tap a person to see it by category and item.',
+    cContrib: 'Contributed', cOf: (p) => `${p}% of the total`, cNone: 'Nothing yet', cGiven: 'Gave', cReceived: 'Received', cPaidFor: 'Payment', cKind: 'Type',
+    cMoneyTitle: 'Money given', cMoneyHint: 'Money passed between people rather than spent, like parents giving the couple wedding money. It counts toward the giver and comes off the receiver.',
+    fFrom: 'From', fTo: 'To', toCouple: 'Groom & bride (half each)', cMoneyEmpty: 'No money given yet', cSameParty: 'From and To are the same', cMemoPh: 'e.g. wedding fund, 혼수 help',
+    exContrib: 'Contributions CSV'
+  });
+
   function ensurePrep() {
     S.wedding = S.wedding || ''; S.checks = S.checks || {}; S.tasks = S.tasks || [];
     S.expenses = S.expenses || []; S.split = S.split || { g: 25, b: 25, gp: 25, bp: 25 };
-    S.guests = S.guests || []; S.guestRate = S.guestRate ?? 60; S.giftLog = S.giftLog || []; S.vendors = S.vendors || []; S.documents = Array.isArray(S.documents) ? S.documents : [];
+    S.guests = S.guests || []; S.guestRate = S.guestRate ?? 60; S.giftLog = S.giftLog || []; S.vendors = S.vendors || []; S.documents = Array.isArray(S.documents) ? S.documents : []; S.contribs = Array.isArray(S.contribs) ? S.contribs : [];
     S.sdmCatalog = S.sdmCatalog || { studios: [], dresses: [], tux: [], makeup: [], hair: [] }; S.sdm = S.sdm || window.NaduSdm.emptyPicks();
     if (!S.tab) S.tab = 'dash';
   }
-  const PREP_KEYS = ['wedding', 'checks', 'tasks', 'expenses', 'split', 'guests', 'guestRate', 'giftLog', 'vendors', 'sdm', 'sdmCatalog', 'documents', 'tab', 'skin', 'collapsed'];
+  const PREP_KEYS = ['wedding', 'checks', 'tasks', 'expenses', 'split', 'guests', 'guestRate', 'giftLog', 'vendors', 'sdm', 'sdmCatalog', 'documents', 'contribs', 'tab', 'skin', 'collapsed'];
 
   // ---------- dates ----------
   const dayNum = (s) => { const [y, m, d] = s.split('-').map(Number); return Date.UTC(y, m - 1, d) / 864e5; };
@@ -1006,7 +1027,21 @@
   $('wd').addEventListener('change', (e) => { S.wedding = e.target.value; save(); renderHeader(); renderPanel(); });
 
   // ---------- derived ----------
-  const expTotals = () => { let paid = 0, planned = 0; S.expenses.forEach((e) => { if (e.status === 'paid') paid += n(e.amount); else planned += n(e.amount); }); return { paid, planned }; };
+  // Money actually paid toward an expense. Items with a payment list use it (several payers, deposits, balances);
+  // older items without one count as paid in full by their "paid by" person once marked paid.
+  const payParts = (e) => {
+    const ps = Array.isArray(e.payments) ? e.payments.filter((x) => n(x.amount) > 0) : [];
+    if (ps.length || Array.isArray(e.payments) && e.payments.length) return ps;
+    return e.status === 'paid' ? [{ by: e.paidBy, amount: n(e.amount), date: '', memo: '' }] : [];
+  };
+  const hasPays = (e) => Array.isArray(e.payments) && e.payments.length > 0;
+  const paidOf = (e) => payParts(e).reduce((a, x) => a + n(x.amount), 0);
+  const leftOf = (e) => Math.max(0, n(e.amount) - paidOf(e));
+  // With a payment list, the status follows the payments: fully paid → paid.
+  const syncStatus = (e) => { if (hasPays(e)) e.status = paidOf(e) >= n(e.amount) && n(e.amount) > 0 ? 'paid' : 'planned'; };
+  const expTotals = () => { let paid = 0, planned = 0; S.expenses.forEach((e) => { paid += paidOf(e); planned += leftOf(e); }); return { paid, planned }; };
+  // Money given between people (e.g. parents giving the couple wedding money). "gb" = the couple, half each.
+  const recvSplit = (to) => to === 'gb' ? [['g', 0.5], ['b', 0.5]] : [[to, 1]];
   function guestStats() {
     const rate = Math.min(100, Math.max(0, n(S.guestRate))) / 100;
     const c = (st) => S.guests.filter((x) => x.status === st).reduce((a, x) => a + Math.max(1, n(x.count)), 0);
@@ -1015,26 +1050,34 @@
   }
   function giftTotals() { const t = { total: 0, g: 0, b: 0, left: 0 }; S.giftLog.forEach((x) => { t.total += n(x.amount); t[x.side === 'b' ? 'b' : 'g'] += n(x.amount); if (!x.thanked) t.left++; }); return t; }
   function settle() {
-    const keys = ['g', 'b', 'gp', 'bp'], owe = { g: 0, b: 0, gp: 0, bp: 0 }, paid = { g: 0, b: 0, gp: 0, bp: 0 };
-    S.expenses.filter((e) => e.status === 'paid').forEach((e) => {
+    const keys = ['g', 'b', 'gp', 'bp'], z = () => ({ g: 0, b: 0, gp: 0, bp: 0 });
+    const owe = z(), paid = z(), given = z(), received = z();
+    S.expenses.forEach((e) => {
+      const amt = paidOf(e); if (!amt) return;
       const r = e.split && keys.some((k) => n(e.split[k]) > 0) ? e.split : S.split;
       const tot = keys.reduce((a, k) => a + n(r[k]), 0) || 1;
-      keys.forEach((k) => { owe[k] += n(e.amount) * n(r[k]) / tot; });
-      if (paid[e.paidBy] != null) paid[e.paidBy] += n(e.amount);
+      keys.forEach((k) => { owe[k] += amt * n(r[k]) / tot; });
+      payParts(e).forEach((x) => { if (paid[x.by] != null) paid[x.by] += n(x.amount); });
     });
-    keys.forEach((k) => { owe[k] = Math.round(owe[k]); });
-    const bal = {}; keys.forEach((k) => { bal[k] = paid[k] - owe[k]; });
+    (S.contribs || []).forEach((c) => {
+      if (given[c.from] == null) return;
+      given[c.from] += n(c.amount); recvSplit(c.to).forEach(([k, f]) => { if (received[k] != null) received[k] += n(c.amount) * f; });
+    });
+    keys.forEach((k) => { owe[k] = Math.round(owe[k]); received[k] = Math.round(received[k]); });
+    // What each person has put in: their payments, plus money they gave others, minus money they received.
+    const contrib = {}; keys.forEach((k) => { contrib[k] = paid[k] + given[k] - received[k]; });
+    const bal = {}; keys.forEach((k) => { bal[k] = contrib[k] - owe[k]; });
     const cr = keys.filter((k) => bal[k] > 0).map((k) => ({ k, v: bal[k] })).sort((a, b) => b.v - a.v);
     const de = keys.filter((k) => bal[k] < 0).map((k) => ({ k, v: -bal[k] })).sort((a, b) => b.v - a.v);
     const tr = []; let i = 0, j = 0;
     while (i < de.length && j < cr.length) { const x = Math.min(de[i].v, cr[j].v); if (x >= 1) tr.push({ from: de[i].k, to: cr[j].k, amt: x }); de[i].v -= x; cr[j].v -= x; if (de[i].v < 1) i++; if (cr[j].v < 1) j++; }
-    return { owe, paid, bal, tr, keys };
+    return { owe, paid, given, received, contrib, bal, tr, keys };
   }
   function prepSums() {
     const set = (k, v) => document.querySelectorAll(`[data-sum="${k}"]`).forEach((e) => { e.textContent = v; });
     const items = allItems(), d = items.filter((i) => isDone(i.id)).length, et = expTotals(), gs = guestStats();
     set('sec:dash', ddText()[0]); set('sec:list', `${d} / ${items.length}`);
-    set('sec:spend', `${T('kPaid')} ${kr(et.paid)}`); set('sec:settle', T('nTransfers')(settle().tr.length));
+    set('sec:spend', `${T('kPaid')} ${kr(et.paid)}`); set('sec:settle', T('nTransfers')(settle().tr.length)); set('sec:contrib', kr(expTotals().paid));
     set('sec:guests', `${T('kMeal')} ${gs.meal}`); set('sec:gifts', kr(giftTotals().total)); set('sec:vendors', T('nVendors')(S.vendors.length));
   }
 
@@ -1137,7 +1180,7 @@
         return;
       }
       else {
-        inp = el('input', { id: iid, name: fd.name, type: fd.type === 'number' ? 'number' : 'text', placeholder: fd.ph || '', class: fd.type === 'money' ? 'money' : '', inputmode: fd.type === 'money' ? 'numeric' : undefined, min: fd.type === 'number' ? 0 : undefined });
+        inp = el('input', { id: iid, name: fd.name, type: fd.type === 'number' ? 'number' : fd.type === 'date' ? 'date' : 'text', placeholder: fd.ph || '', class: fd.type === 'money' ? 'money' : '', inputmode: fd.type === 'money' ? 'numeric' : undefined, min: fd.type === 'number' ? 0 : undefined });
         if (fd.def != null) inp.value = fd.def;
         if (fd.type === 'money') inp.addEventListener('blur', () => { if (inp.value !== '') inp.value = comma(parse(inp.value)); });
       }
@@ -1205,7 +1248,17 @@
       const sp = { g: o.sg, b: o.sb, gp: o.sgp, bp: o.sbp }, any = Object.values(sp).some((v) => v > 0);
       if (o.custom && !any) { splitPreview(forms.exp); forms.exp.elements.sg?.focus(); return false; }
       const d = { cat: o.cat, name: o.name, amount: o.amount, status: o.status, paidBy: o.paidBy, memo: o.memo, custom: o.custom && any, split: o.custom && any ? sp : null };
-      upsert(S.expenses, id, d); save(); renderSpend(); prepSums();
+      upsert(S.expenses, id, d); S.expenses.forEach(syncStatus); save(); renderSpend(); prepSums();
+    });
+    forms.money = entryForm('money-form', [
+      { name: 'from', type: 'select', label: T('fFrom'), opts: opts.parties, def: 'gp' },
+      { name: 'to', type: 'select', label: T('fTo'), opts: () => [['gb', T('toCouple')], ...opts.parties()], def: 'gb' },
+      { name: 'amount', type: 'money', label: T('fAmt') }, { name: 'date', type: 'date', label: T('payDate'), def: new Date().toISOString().slice(0, 10) },
+      { name: 'memo', type: 'note', label: T('fMemo'), wide: true, ph: T('cMemoPh') }
+    ], (o, id) => {
+      if (!o.amount) return false;
+      if (o.from === o.to || (o.to === 'gb' && (o.from === 'g' || o.from === 'b'))) { toast(T('cSameParty')); return false; }
+      upsert(S.contribs, id, { from: o.from, to: o.to, amount: o.amount, date: o.date, memo: o.memo }); save(); renderSettle(); prepSums();
     });
     forms.exp.onSplit = () => {
       const f = forms.exp;
@@ -1228,7 +1281,7 @@
       { name: 'quote', type: 'money', label: T('fQuote') }, { name: 'final', type: 'money', label: T('fFinal') },
       { name: 'memo', type: 'note', label: T('fMemo'), ph: T('phVendorMemo'), wide: true }
     ], (o, id) => { if (!o.name) return false; upsert(S.vendors, id, o); save(); renderVendors(); prepSums(); });
-    [['exp-form-host', forms.exp], ['guest-form-host', forms.guest], ['gift-form-host', forms.gift], ['vendor-form-host', forms.vendor]].forEach(([h, f]) => { const host = $(h); host.innerHTML = ''; host.append(f); });
+    [['exp-form-host', forms.exp], ['guest-form-host', forms.guest], ['gift-form-host', forms.gift], ['vendor-form-host', forms.vendor], ['money-form-host', forms.money]].forEach(([h, f]) => { const host = $(h); host.innerHTML = ''; host.append(f); });
     forms.lang = S.lang;
   }
 
@@ -1245,8 +1298,8 @@
     if (!list.length) emptyRow(tb, 7, T('expEmpty'));
     list.forEach((x) => tb.append(el('tr', {},
       el('td', { class: 'l', text: cname(x.cat) }), el('td', { class: 'l vname' }, x.name, clipChip('e:' + x.id)), el('td', { class: 'n', text: won(n(x.amount)) }),
-      el('td', { class: 'l' }, el('span', { class: 'chip ' + (x.status === 'paid' ? 'good' : 'plan'), text: x.status === 'paid' ? T('expPaid') : T('expPlanned') })),
-      el('td', { class: 'l' }, pname(x.paidBy), x.custom && x.split ? el('span', { class: 'chip', style: 'margin-left:6px', title: splitText(x.split), text: T('ownSplitChip') }) : null, x.custom && x.split ? el('div', { class: 'small', text: splitText(x.split) }) : null), noteCell(x.memo),
+      el('td', { class: 'l' }, statusChip(x)),
+      el('td', { class: 'l' }, payerCell(x), x.custom && x.split ? el('span', { class: 'chip', style: 'margin-left:6px', title: splitText(x.split), text: T('ownSplitChip') }) : null, x.custom && x.split ? el('div', { class: 'small', text: splitText(x.split) }) : null), noteCell(x.memo),
       rowActs(() => forms.exp.edit(x), () => { S.expenses = S.expenses.filter((y) => y !== x); save(); renderSpend(); prepSums(); }))));
     if (list.length) tb.append(el('tr', { class: 'tot' }, el('td', { class: 'l', colspan: 2, text: T('sumAll') }), el('td', { class: 'n', text: won(et.paid + et.planned) }), el('td', { colspan: 4 })));
     tbl.append(tb);
@@ -1255,12 +1308,79 @@
     const ctb = el('tbody');
     BCATS.forEach(([k]) => {
       const rows = S.expenses.filter((x) => x.cat === k); if (!rows.length) return;
-      const p = rows.filter((x) => x.status === 'paid').reduce((a, x) => a + n(x.amount), 0), q = rows.filter((x) => x.status !== 'paid').reduce((a, x) => a + n(x.amount), 0);
+      const p = rows.reduce((a, x) => a + paidOf(x), 0), q = rows.reduce((a, x) => a + leftOf(x), 0);
       ctb.append(el('tr', {}, el('td', { class: 'l', text: cname(k) }), el('td', { class: 'n', text: p ? won(p) : '–' }), el('td', { class: 'n', text: q ? won(q) : '–' }), el('td', { class: 'n', text: won(p + q) })));
     });
     if (!ctb.children.length) emptyRow(ctb, 4, T('expEmpty'));
     ct.append(ctb);
     renderSettle();
+  }
+  function statusChip(x) {
+    const pd = paidOf(x);
+    if (x.status !== 'paid' && pd > 0) return el('span', { class: 'chip warn', title: `${won(pd)} / ${won(n(x.amount))}`, text: T('expPartial') });
+    return el('span', { class: 'chip ' + (x.status === 'paid' ? 'good' : 'plan'), text: x.status === 'paid' ? T('expPaid') : T('expPlanned') });
+  }
+  // "Paid by" cell: one name, or each payer with their amount; the 💳 button opens the payment list.
+  function payerCell(x) {
+    const box = el('div', { class: 'payer' });
+    if (hasPays(x)) {
+      const by = {}; payParts(x).forEach((p) => { by[p.by] = (by[p.by] || 0) + n(p.amount); });
+      Object.entries(by).forEach(([k, v]) => box.append(el('div', { class: 'small' }, el('span', { text: pname(k) + ' ' }), el('b', { class: 'mono', text: won(v) }))));
+    } else box.append(el('span', { text: pname(x.paidBy) }));
+    const k = hasPays(x) ? x.payments.length : 0;
+    const b = el('button', { type: 'button', class: 'chipbtn pay-btn', text: '💳 ' + T('payBtn')(k), 'aria-label': `${T('payTitle')}: ${x.name}` });
+    b.addEventListener('click', () => openPayments(x.id));
+    box.append(b);
+    return box;
+  }
+  // ---------- payments of one expense (deposit, balance, several payers) ----------
+  let payDlg = null;
+  function openPayments(id) {
+    if (!payDlg) {
+      const d = el('dialog', { class: 'note-dialog pay-dialog', 'aria-labelledby': 'pay-title' });
+      document.body.append(d);
+      d.addEventListener('close', () => { renderSpend(); prepSums(); });
+      payDlg = d;
+    }
+    const d = payDlg, writable = !!(Sync.plan && Sync.plan.writable);
+    const e = () => S.expenses.find((x) => x.id === id);
+    const draw = () => {
+      const x = e(); if (!x) { d.close(); return; }
+      // An older item marked paid becomes its first payment, so adding a second one keeps it.
+      if (!hasPays(x) && x.status === 'paid' && n(x.amount) > 0) x.payments = [{ id: uid(), by: x.paidBy, amount: n(x.amount), date: '', memo: '' }];
+      const pd = paidOf(x), amt = n(x.amount), left = amt - pd;
+      d.innerHTML = '';
+      d.append(el('h3', { id: 'pay-title', text: `${x.name} · ${won(amt)}` }),
+        el('p', { class: 'small pay-sum' }, el('b', { text: T('payPaid')(won(pd), won(amt)) }), ' · ',
+          el('span', { class: left < 0 ? 'neg' : '', text: left > 0 ? T('payLeft')(won(left)) : left < 0 ? T('payOver')(won(-left)) : T('payFull') })));
+      const ul = el('ul', { class: 'transfers pay-list' });
+      const ps = (x.payments || []).slice().sort((a, b) => String(a.date || '').localeCompare(String(b.date || '')));
+      if (!ps.length) ul.append(el('li', {}, el('span', { class: 'small', text: T('payNone') })));
+      ps.forEach((p) => ul.append(el('li', {},
+        el('span', {}, el('b', { text: pname(p.by) }), p.date ? el('span', { class: 'small', text: ' · ' + fmtDay(dayNum(p.date)) }) : null, p.memo ? el('span', { class: 'small', text: ' · ' + p.memo }) : null),
+        el('span', { class: 'pay-amt' }, el('b', { text: won(n(p.amount)) }), writable ? delBtn(T('del'), () => { x.payments = x.payments.filter((y) => y.id !== p.id); syncStatus(x); save(); draw(); }) : null))));
+      d.append(ul);
+      if (writable) {
+        const who = el('select', { id: 'pay-by' }, PARTIES.map(([k]) => el('option', { value: k, text: pname(k) }))); who.value = x.paidBy || 'g';
+        const am = el('input', { id: 'pay-amt', class: 'money', inputmode: 'numeric', autocomplete: 'off' }); am.value = left > 0 ? comma(left) : '';
+        am.addEventListener('blur', () => { if (am.value) am.value = comma(parse(am.value)); });
+        const dt = el('input', { id: 'pay-date', type: 'date' }); dt.value = new Date().toISOString().slice(0, 10);
+        const memo = el('input', { id: 'pay-memo', maxlength: 80, placeholder: T('payMemoPh') });
+        const f = el('form', { class: 'entry pay-form' },
+          el('label', { class: 'f', for: 'pay-by' }, T('payWho'), who), el('label', { class: 'f', for: 'pay-amt' }, T('fAmt'), am),
+          el('label', { class: 'f', for: 'pay-date' }, T('payDate'), dt), el('label', { class: 'f', for: 'pay-memo' }, T('fMemo'), memo),
+          el('div', { class: 'acts' }, el('button', { type: 'submit', class: 'primary', text: T('payAdd') })));
+        f.addEventListener('submit', (ev) => {
+          ev.preventDefault(); const v = parse(am.value); if (!(v > 0)) { am.focus(); return; }
+          x.payments = [...(x.payments || []), { id: uid(), by: who.value, amount: v, date: dt.value, memo: memo.value.trim() }];
+          syncStatus(x); save(); draw(); const a2 = d.querySelector('#pay-amt'); a2 && a2.focus();
+        });
+        d.append(f, el('p', { class: 'small', text: T('payHint') }));
+      }
+      const close = el('button', { type: 'button', text: T('payClose') }); close.addEventListener('click', () => d.close());
+      d.append(el('div', { class: 'note-acts' }, el('span'), close));
+    };
+    draw(); d.showModal();
   }
   function renderRatio() {
     const box = $('ratio'); box.innerHTML = '';
@@ -1272,14 +1392,67 @@
   }
   function renderSettle() {
     const st = settle(), tbl = $('settle-table'); tbl.innerHTML = '';
-    thead(tbl, [[T('party'), 'l'], [T('sOwe')], [T('sPaid')], [T('sBal')]]);
+    thead(tbl, [[T('party'), 'l'], [T('sOwe')], [T('cContrib')], [T('sBal')]]);
     const tb = el('tbody');
-    st.keys.forEach((k) => tb.append(el('tr', {}, el('td', { class: 'l', text: pname(k) }), el('td', { class: 'n', text: won(st.owe[k]) }), el('td', { class: 'n', text: won(st.paid[k]) }),
+    st.keys.forEach((k) => tb.append(el('tr', {}, el('td', { class: 'l', text: pname(k) }), el('td', { class: 'n', text: won(st.owe[k]) }), el('td', { class: 'n', text: won(st.contrib[k]) }),
       el('td', { class: 'n ' + (st.bal[k] > 0 ? 'pos' : st.bal[k] < 0 ? 'neg' : ''), text: (st.bal[k] > 0 ? '+' : '') + won(st.bal[k]) }))));
     tbl.append(tb);
     const ul = $('transfers'); ul.innerHTML = '';
     if (!st.tr.length) ul.append(el('li', {}, el('span', { class: 'small', text: T('noTransfer') })));
     st.tr.forEach((x) => ul.append(el('li', {}, el('span', { text: `${pname(x.from)} → ${pname(x.to)}` }), el('b', { text: won(x.amt) }))));
+    renderContrib(st);
+  }
+  // ---------- who contributed what ----------
+  const toName = (k) => k === 'gb' ? T('toCouple') : pname(k);
+  function contribLines(k) {
+    const pays = [], money = [];
+    S.expenses.forEach((e) => payParts(e).forEach((p) => { if (p.by === k) pays.push({ e, p }); }));
+    (S.contribs || []).forEach((c) => {
+      if (c.from === k) money.push({ c, v: n(c.amount), dir: 'out' });
+      recvSplit(c.to).forEach(([t, f]) => { if (t === k) money.push({ c, v: -Math.round(n(c.amount) * f), dir: 'in' }); });
+    });
+    return { pays, money };
+  }
+  function renderContrib(st) {
+    st = st || settle();
+    const box = $('contrib-list'); if (!box) return;
+    box.innerHTML = '';
+    const total = st.keys.reduce((a, k) => a + Math.max(0, st.contrib[k]), 0);
+    st.keys.forEach((k) => {
+      const { pays, money } = contribLines(k), c = st.contrib[k], pct = total ? Math.round(Math.max(0, c) / total * 100) : 0;
+      const byCat = {}; pays.forEach(({ e, p }) => { byCat[e.cat] = (byCat[e.cat] || 0) + n(p.amount); });
+      const det = el('details', { class: 'contrib' + (pays.length || money.length ? '' : ' none') });
+      det.append(el('summary', {},
+        el('div', { class: 'c-top' }, el('b', { text: pname(k) }), el('b', { class: 'mono', text: won(c) })),
+        el('div', { class: 'c-bar', 'aria-hidden': 'true' }, el('span', { style: `width:${pct}%` })),
+        pays.length || money.length ? el('div', { class: 'small c-sub', text: [st.paid[k] ? `${T('cPaidFor')} ${won(st.paid[k])}` : '', st.given[k] ? `${T('cGiven')} ${won(st.given[k])}` : '', st.received[k] ? `${T('cReceived')} −${won(st.received[k])}` : ''].filter(Boolean).join(' · ') }) : null,
+        el('div', { class: 'small c-sub', text: pays.length || money.length ? `${T('cOf')(pct)} · ${T('sOwe')} ${won(st.owe[k])} · ${T('sBal')} ${(st.bal[k] > 0 ? '+' : '') + won(st.bal[k])}` : T('cNone') })));
+      if (pays.length || money.length) {
+        const t = el('table', { class: 'c-cats' }, el('tbody', {},
+          BCATS.filter(([ck]) => byCat[ck]).map(([ck]) => el('tr', {}, el('td', { class: 'l', text: cname(ck) }), el('td', { class: 'n', text: won(byCat[ck]) }))),
+          st.given[k] ? el('tr', {}, el('td', { class: 'l', text: T('cGiven') }), el('td', { class: 'n', text: won(st.given[k]) })) : null,
+          st.received[k] ? el('tr', {}, el('td', { class: 'l', text: T('cReceived') }), el('td', { class: 'n', text: '−' + won(st.received[k]) })) : null));
+        const items = el('ul', { class: 'c-items' });
+        pays.sort((a, b) => String(b.p.date || '').localeCompare(String(a.p.date || ''))).forEach(({ e, p }) => items.append(el('li', {},
+          el('span', {}, e.name, el('span', { class: 'small', text: ' · ' + cname(e.cat) + (p.date ? ' · ' + fmtDay(dayNum(p.date)) : '') + (p.memo ? ' · ' + p.memo : '') })), el('b', { class: 'mono', text: won(n(p.amount)) }))));
+        money.forEach(({ c, v, dir }) => items.append(el('li', {},
+          el('span', {}, dir === 'out' ? `${T('cGiven')} → ${toName(c.to)}` : `${T('cReceived')} ← ${pname(c.from)}`, el('span', { class: 'small', text: (c.date ? ' · ' + fmtDay(dayNum(c.date)) : '') + (c.memo ? ' · ' + c.memo : '') })),
+          el('b', { class: 'mono ' + (v < 0 ? 'neg' : ''), text: (v < 0 ? '−' : '') + won(Math.abs(v)) }))));
+        det.append(t, items);
+      }
+      box.append(det);
+    });
+    renderMoneyLog();
+  }
+  function renderMoneyLog() {
+    const tbl = $('money-table'); if (!tbl) return; tbl.innerHTML = '';
+    thead(tbl, [[T('payDate'), 'l'], [T('fFrom'), 'l'], [T('fTo'), 'l'], [T('fAmt')], [T('fMemo'), 'l'], ['']]);
+    const tb = el('tbody'), list = (S.contribs || []).slice().sort((a, b) => String(b.date || '').localeCompare(String(a.date || '')));
+    if (!list.length) emptyRow(tb, 6, T('cMoneyEmpty'));
+    list.forEach((c) => tb.append(el('tr', {}, el('td', { class: 'l', text: c.date ? fmtDay(dayNum(c.date)) : '–' }), el('td', { class: 'l', text: pname(c.from) }), el('td', { class: 'l', text: toName(c.to) }),
+      el('td', { class: 'n', text: won(n(c.amount)) }), noteCell(c.memo),
+      rowActs(() => forms.money.edit(c), () => { S.contribs = S.contribs.filter((y) => y !== c); save(); renderSettle(); prepSums(); }))));
+    tbl.append(tb);
   }
 
   // ---------- guests ----------
@@ -1590,12 +1763,14 @@
   }
   function reportSpend(R) {
     const et = expTotals(), st = settle();
-    const rows = BCATS.map(([k]) => { const r = S.expenses.filter((x) => x.cat === k); return [cname(k), r.filter((x) => x.status === 'paid').reduce((a, x) => a + n(x.amount), 0), r.filter((x) => x.status !== 'paid').reduce((a, x) => a + n(x.amount), 0)]; }).filter((r) => r[1] || r[2]);
+    const rows = BCATS.map(([k]) => { const r = S.expenses.filter((x) => x.cat === k); return [cname(k), r.reduce((a, x) => a + paidOf(x), 0), r.reduce((a, x) => a + leftOf(x), 0)]; }).filter((r) => r[1] || r[2]);
     const tbl = el('table', {}, el('thead', {}, el('tr', {}, [[T('fCat'), 'l'], [T('kPaid')], [T('kPlanned')]].map(([k, c]) => el('th', { class: c || '', text: k })))),
       el('tbody', {}, rows.map((r) => el('tr', {}, el('td', { class: 'l', text: r[0] }), el('td', { class: 'n', text: won(r[1]) }), el('td', { class: 'n', text: won(r[2]) }))),
         el('tr', { class: 'tot' }, el('td', { class: 'l', text: T('sumAll') }), el('td', { class: 'n', text: won(et.paid) }), el('td', { class: 'n', text: won(et.planned) }))));
     const tr = el('ul', { class: 'transfers' }, st.tr.length ? st.tr.map((x) => el('li', {}, el('span', { text: `${pname(x.from)} → ${pname(x.to)}` }), el('b', { text: won(x.amt) }))) : el('li', {}, T('noTransfer')));
-    R.append(el('section', {}, el('h3', { text: T('repSpend') }), el('div', { class: 'scroll' }, tbl), el('div', { class: 'small', text: T('sTransfers') }), tr));
+    const ct = el('table', {}, el('thead', {}, el('tr', {}, [[T('party'), 'l'], [T('sOwe')], [T('cContrib')], [T('sBal')]].map(([k, c]) => el('th', { class: c || '', text: k })))),
+      el('tbody', {}, st.keys.map((k) => el('tr', {}, el('td', { class: 'l', text: pname(k) }), el('td', { class: 'n', text: won(st.owe[k]) }), el('td', { class: 'n', text: won(st.contrib[k]) }), el('td', { class: 'n', text: (st.bal[k] > 0 ? '+' : '') + won(st.bal[k]) })))));
+    R.append(el('section', {}, el('h3', { text: T('repSpend') }), el('div', { class: 'scroll' }, tbl), el('div', { class: 'scroll' }, ct), el('div', { class: 'small', text: T('sTransfers') }), tr));
   }
   // Every note in the plan, in full with its line breaks, grouped by where it was written.
   function reportNotes(R, M) {
@@ -1626,7 +1801,7 @@
   // against the latest version; otherwise the server returns the newer copy, we merge both people's
   // edits (record by record, field by field) and try again. Every saved version is kept as history.
   const SHARED = ['budget', 'selectedVenue', 'selectedLoan', 'venues', 'nonVenue', 'afterCosts', 'honsu', 'categories', 'loans', 'seeded',
-    'wedding', 'checks', 'tasks', 'expenses', 'split', 'guests', 'guestRate', 'giftLog', 'vendors', 'sdm', 'sdmCatalog', 'documents'];
+    'wedding', 'checks', 'tasks', 'expenses', 'split', 'guests', 'guestRate', 'giftLog', 'vendors', 'sdm', 'sdmCatalog', 'documents', 'contribs'];
   const PREFS = ['lang', 'skin', 'tab', 'collapsed', 'report', 'planId'];
   const PREF_KEY = 'nadu-wedding-prefs-v1';
   const Sync = { me: null, plans: [], planId: null, plan: null, users: {}, base: {}, ver: {}, seq: 0, timer: null, inflight: false, again: false, merged: false, poller: null, lastEdit: null, status: 'idle' };
@@ -1644,7 +1819,7 @@
     histHelp: '모든 저장은 항목별 버전으로 남아요. 이전 버전으로 되돌려도 지금 버전은 기록에 그대로 남습니다.', hWhen: '시각', hWho: '수정한 사람', hWhat: '항목', hVer: '버전', hAct: '종류',
     aEdit: '수정', aRestore: '되돌림', aImport: '가져오기', restoreL: '이 버전으로 되돌리기', restoreQ: '정말 되돌릴까요?', restored: '이전 버전으로 되돌렸어요', more: '더 보기', histEmpty: '아직 기록이 없어요',
     filesLoaded: (a, b) => `사진 ${a}/${b}장을 올렸어요`, exportTitle: '내보내기', exBackup: '전체 백업 (.sql)', exJson: '전체 데이터 (JSON)', exExp: '지출 CSV', exGuests: '하객 CSV', exGifts: '축의금 CSV', exVendors: '업체 CSV', exHist: '변경 기록 CSV',
-    keyLabels: { budget: '예산 기준', selectedVenue: '선택한 예식장', selectedLoan: '선택한 대출', venues: '예식장 옵션', nonVenue: '예식장 외 비용', afterCosts: '입주 비용', honsu: '혼수', categories: '추가 카테고리', loans: '대출 옵션', seeded: '기본 옵션', wedding: '예식 날짜', checks: '체크리스트 완료', tasks: '직접 추가한 할 일', expenses: '지출 내역', split: '분담 비율', guests: '하객 명단', guestRate: '미정 참석률', giftLog: '받은 축의금', vendors: '업체 비교', sdm: '스드메 조합', sdmCatalog: '스드메 업체 목록', documents: '서류함' }
+    keyLabels: { budget: '예산 기준', selectedVenue: '선택한 예식장', selectedLoan: '선택한 대출', venues: '예식장 옵션', nonVenue: '예식장 외 비용', afterCosts: '입주 비용', honsu: '혼수', categories: '추가 카테고리', loans: '대출 옵션', seeded: '기본 옵션', wedding: '예식 날짜', checks: '체크리스트 완료', tasks: '직접 추가한 할 일', expenses: '지출 내역', split: '분담 비율', guests: '하객 명단', guestRate: '미정 참석률', giftLog: '받은 축의금', vendors: '업체 비교', sdm: '스드메 조합', sdmCatalog: '스드메 업체 목록', documents: '서류함', contribs: '주고받은 돈' }
   });
   Object.assign(L.en, {
     tHistory: 'History', printNow: 'Print · Save as PDF', gUser: 'Username', gPass: 'Password', gDisplay: 'Display name', gInvite: 'Invite code', gLogin: 'Sign in', gSignup: 'Create account',
@@ -1655,7 +1830,7 @@
     histHelp: 'Every save is kept as a version of that section. Restoring an old version adds a new version, so nothing is lost.', hWhen: 'When', hWho: 'Who', hWhat: 'Section', hVer: 'Version', hAct: 'Type',
     aEdit: 'Edit', aRestore: 'Restore', aImport: 'Import', restoreL: 'Restore this version', restoreQ: 'Restore it?', restored: 'Restored the earlier version', more: 'Load more', histEmpty: 'No history yet',
     filesLoaded: (a, b) => `Uploaded ${a} of ${b} photos`, exportTitle: 'Export', exBackup: 'Full backup (.sql)', exJson: 'All data (JSON)', exExp: 'Expenses CSV', exGuests: 'Guests CSV', exGifts: 'Gift money CSV', exVendors: 'Vendors CSV', exHist: 'History CSV',
-    keyLabels: { budget: 'Budget inputs', selectedVenue: 'Selected venue', selectedLoan: 'Selected loan', venues: 'Venue options', nonVenue: 'Non-venue costs', afterCosts: 'Move-in costs', honsu: '혼수', categories: 'Extra categories', loans: 'Loan options', seeded: 'Default options', wedding: 'Wedding date', checks: 'Checklist ticks', tasks: 'Our own tasks', expenses: 'Expenses', split: 'Split ratio', guests: 'Guest list', guestRate: 'Maybe attendance rate', giftLog: 'Gift money', vendors: 'Vendors', sdm: 'Studio/dress combo', sdmCatalog: 'Studio/dress listings', documents: 'Documents' }
+    keyLabels: { budget: 'Budget inputs', selectedVenue: 'Selected venue', selectedLoan: 'Selected loan', venues: 'Venue options', nonVenue: 'Non-venue costs', afterCosts: 'Move-in costs', honsu: '혼수', categories: 'Extra categories', loans: 'Loan options', seeded: 'Default options', wedding: 'Wedding date', checks: 'Checklist ticks', tasks: 'Our own tasks', expenses: 'Expenses', split: 'Split ratio', guests: 'Guest list', guestRate: 'Maybe attendance rate', giftLog: 'Gift money', vendors: 'Vendors', sdm: 'Studio/dress combo', sdmCatalog: 'Studio/dress listings', documents: 'Documents', contribs: 'Money given' }
   });
 
   // ---------- three-way merge ----------
@@ -2331,6 +2506,15 @@
       S.giftLog.map((x) => [x.name, x.side === 'b' ? T('sideB') : T('sideG'), n(x.amount), x.memo || '', x.thanked ? 'Y' : ''])), 'text/csv'),
     vendors: () => download(`vendors-${stamp()}.csv`, csv([T('fCat'), T('fVendor'), T('fQuote'), T('fFinal'), T('fMemo'), T('pickedL')],
       S.vendors.map((v) => [cname(v.cat), v.name, n(v.quote), n(v.final), v.memo || '', v.picked ? 'Y' : ''])), 'text/csv'),
+    contrib: () => {
+      const rows = [];
+      S.expenses.forEach((e) => payParts(e).forEach((p) => rows.push([pname(p.by), T('cPaidFor'), e.name, cname(e.cat), n(p.amount), p.date || '', p.memo || ''])));
+      (S.contribs || []).forEach((c) => {
+        rows.push([pname(c.from), T('cGiven'), toName(c.to), '', n(c.amount), c.date || '', c.memo || '']);
+        recvSplit(c.to).forEach(([k, f]) => rows.push([pname(k), T('cReceived'), pname(c.from), '', -Math.round(n(c.amount) * f), c.date || '', c.memo || '']));
+      });
+      download(`contributions-${stamp()}.csv`, csv([T('party'), T('cKind'), T('fItem'), T('fCat'), T('fAmt'), T('payDate'), T('fMemo')], rows), 'text/csv');
+    },
     hist: async () => {
       let rows = [], before = 0;
       for (let i = 0; i < 20; i++) { const r = await api('/history?limit=200' + (before ? '&before=' + before : '')); if (!r.ok || !r.data.rows.length) break; rows = rows.concat(r.data.rows); Sync.users = r.data.users || Sync.users; before = r.data.rows[r.data.rows.length - 1].id; if (r.data.rows.length < 200) break; }
@@ -2340,7 +2524,7 @@
   };
   function renderExportButtons() {
     const box = $('export-btns'); if (!box) return; box.innerHTML = '';
-    [['backup', 'exBackup'], ['json', 'exJson'], ['exp', 'exExp'], ['guests', 'exGuests'], ['gifts', 'exGifts'], ['vendors', 'exVendors'], ['hist', 'exHist']]
+    [['backup', 'exBackup'], ['json', 'exJson'], ['exp', 'exExp'], ['guests', 'exGuests'], ['gifts', 'exGifts'], ['vendors', 'exVendors'], ['contrib', 'exContrib'], ['hist', 'exHist']]
       .filter(([k]) => k !== 'backup' || (Sync.me && Sync.me.is_admin)).forEach(([k, lab]) => {
       const b = el('button', { type: 'button', text: T(lab) });
       // CSVs are built here from data the page already has; report them so the access log is complete.

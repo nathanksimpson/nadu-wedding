@@ -308,6 +308,30 @@ form.entry .split-f.hide { display: none; }
 form.entry .check.wide { grid-column: 1 / -1; }
 form.entry .split-info { grid-column: 1 / -1; font-size: 14px; }
 form.entry .split-info.bad b { color: var(--bad); }
+/* contributions & payments */
+.payer { display: flex; flex-direction: column; gap: 2px; align-items: flex-start; }
+.chipbtn.pay-btn { padding: 1px 8px; font-size: 12px; margin-top: 2px; }
+.pay-dialog { width: min(560px, calc(100vw - 32px)); }
+.pay-dialog h3 { margin: 0 0 4px; }
+.pay-list { margin: 10px 0; }
+.pay-amt { display: inline-flex; align-items: center; gap: 4px; }
+.pay-form { margin-top: 6px; }
+.contrib-list { display: flex; flex-direction: column; gap: 8px; }
+details.contrib { background: var(--surface); border: 1px solid var(--line); border-radius: var(--r); padding: 12px 14px; }
+details.contrib.none { opacity: .7; }
+details.contrib > summary { list-style: none; cursor: pointer; display: flex; flex-direction: column; gap: 6px; }
+details.contrib > summary::-webkit-details-marker { display: none; }
+.c-top { display: flex; justify-content: space-between; gap: 12px; align-items: baseline; }
+.c-top b:first-child::before { content: '▸ '; color: var(--muted); }
+details[open] .c-top b:first-child::before { content: '▾ '; }
+.c-bar { height: 6px; background: var(--sunk); border-radius: 999px; overflow: hidden; }
+.c-bar span { display: block; height: 100%; background: var(--accent); border-radius: 999px; }
+.c-cats { width: 100%; margin-top: 10px; font-size: 14px; }
+.c-cats td { padding: 3px 0; }
+.c-items { list-style: none; margin: 8px 0 0; padding: 8px 0 0; border-top: 1px dashed var(--line); display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+.c-items li { display: flex; justify-content: space-between; gap: 12px; }
+.c-items li > span { min-width: 0; overflow-wrap: anywhere; }
+.c-items .mono, .payer .mono, .c-top .mono { font-weight: 500; white-space: nowrap; }
 /* documents */
 .doc-filters { display: flex; flex-direction: column; gap: 10px; }
 .chiprow { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -592,6 +616,15 @@ body.gated .wrap { visibility: hidden; }
       <h3 data-t="sTransfers"></h3>
       <ul class="transfers" id="transfers"></ul>
       <p class="small" data-t="sepNote" style="margin:0"></p>
+    </section>
+    <section id="contrib" class="app">
+      <div class="sec-head"><h2 data-t="cTitle"></h2></div>
+      <p class="small" data-t="cHint" style="margin:0"></p>
+      <div id="contrib-list" class="contrib-list"></div>
+      <h3 data-t="cMoneyTitle"></h3>
+      <p class="small" data-t="cMoneyHint" style="margin:0"></p>
+      <div id="money-form-host"></div>
+      <div class="panel scroll"><table id="money-table"></table></div>
     </section>
   </div>
 

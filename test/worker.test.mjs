@@ -131,6 +131,7 @@ await putFile(nathan, P1, 'sdm-s1.jpg', jpg);
 const pdf = new Uint8Array(1_800_000); for (let i = 0; i < pdf.length; i++) pdf[i] = (i * 31 + 7) & 255; pdf.set([0x25, 0x50, 0x44, 0x46], 0);
 ok((await call('/api/doc/documents', { method: 'PUT', sid: nathan, plan: P1, body: { value: [{ id: 'd1', file: 'doc-d1.pdf', title: '웨딩홀 계약서', kind: 'contract' }], baseVersion: 0 } })).status === 200, 'documents section saves');
 ok((await putFile(nathan, P1, 'doc-d1.pdf', pdf, 'application/pdf')).status === 200, 'editor uploads a 1.8 MB PDF');
+ok((await call('/api/doc/contribs', { method: 'PUT', sid: nathan, plan: P1, body: { value: [{ id: 'c1', from: 'gp', to: 'gb', amount: 6000000, date: '2026-11-01', memo: '결혼 자금' }], baseVersion: 0 } })).status === 200, 'money-given section saves');
 ok(db.prepare("SELECT COUNT(*) AS n FROM plan_files WHERE plan_id = ? AND name LIKE 'doc-d1.pdf%'").get(P1).n === 3, 'large document stored in parts');
 fr = await worker.fetch(new Request(base + '/api/plan/files/doc-d1.pdf?plan=' + P1 + '&fn=' + encodeURIComponent('웨딩홀 계약서.pdf'), { headers: { cookie: 'sid=' + duyeon } }), env);
 ok(fr.status === 200 && Buffer.from(await fr.arrayBuffer()).equals(Buffer.from(pdf)), 'member downloads the whole document back');

@@ -19,7 +19,7 @@ import {
 
 const SHARED_KEYS = new Set([
   'budget', 'selectedVenue', 'selectedLoan', 'venues', 'nonVenue', 'afterCosts', 'honsu', 'categories', 'loans', 'seeded',
-  'wedding', 'checks', 'tasks', 'expenses', 'split', 'guests', 'guestRate', 'giftLog', 'vendors', 'sdm', 'sdmCatalog', 'documents'
+  'wedding', 'checks', 'tasks', 'expenses', 'split', 'guests', 'guestRate', 'giftLog', 'vendors', 'sdm', 'sdmCatalog', 'documents', 'contribs'
 ]);
 const SESSION_DAYS = 30;
 const MAX_DOC_BYTES = 400_000;
