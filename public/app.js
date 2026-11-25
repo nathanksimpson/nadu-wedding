@@ -139,15 +139,14 @@
   const n = (v) => Number(v) || 0;
   const comma = (v) => Math.round(v).toLocaleString('en-US');
   const won = (v) => (v < 0 ? '−₩' : '₩') + comma(Math.abs(v));
+  // Exact amounts in every language, never rounded, so Korean and English always show the same number:
+  // 12,345,678 → "1,234만 5,678원" in Korean, "₩12,345,678" elsewhere.
   function kr(v) {
-    const a = Math.abs(v), s = v < 0 ? '−' : '';
-    if (!isKo()) {
-      if (a >= 1e9) return s + '₩' + (a / 1e9).toFixed(2).replace(/\.?0+$/, '') + 'B';
-      if (a >= 1e6) return s + '₩' + (a / 1e6).toFixed(2).replace(/\.?0+$/, '') + 'M';
-      return s + '₩' + comma(a);
-    }
-    if (a >= 1e8) { const e = Math.floor(a / 1e8), m = Math.round((a % 1e8) / 1e4); return s + e + '억' + (m ? ' ' + comma(m) + '만' : '') + '원'; }
-    return s + comma(Math.round(a / 1e4)) + '만원';
+    const a = Math.round(Math.abs(n(v))), s = v < 0 ? '−' : '';
+    if (!isKo()) return s + '₩' + comma(a);
+    const eok = Math.floor(a / 1e8), man = Math.floor((a % 1e8) / 1e4), won1 = a % 1e4;
+    const parts = [eok ? comma(eok) + '억' : '', man ? comma(man) + '만' : '', won1 || !a ? comma(won1) : ''].filter(Boolean);
+    return s + parts.join(' ') + '원';
   }
   const parse = (str) => { const d = String(str).replace(/[^\d.-]/g, ''); return d === '' ? 0 : Number(d); };
   const el = (tag, attrs = {}, ...kids) => { const e = document.createElement(tag); for (const [k, v] of Object.entries(attrs)) { if (k === 'class') e.className = v; else if (k === 'text') e.textContent = v; else if (v !== undefined && v !== null && v !== false) e.setAttribute(k, v === true ? '' : v); } kids.flat().forEach((c) => c != null && e.append(c)); return e; };
@@ -586,7 +585,7 @@
     });
 
     const sum = $('summary'); sum.innerHTML = '';
-    const stat = (k, v, s, cls) => el('div', { class: 'stat' }, el('div', { class: 'k', text: T(k) }), el('div', { class: 'v ' + (cls || ''), text: v }), el('div', { class: 's', text: s }));
+    const stat = (k, v, s, cls) => el('div', { class: 'stat' }, el('div', { class: 'k', text: T(k) }), el('div', { class: 'v ' + (cls || ''), text: v }), el('div', { class: 's', text: s && s !== v ? s : '' }));
     const monthly = M.loan ? M.loanAmt * n(M.loan.rate) / 100 / 12 : 0;
     sum.append(
       stat('availStat', kr(M.avail), won(M.avail), M.avail < 0 ? 'bad' : ''),
@@ -990,7 +989,7 @@
   }
   const pctOf = (a, b) => b > 0 ? Math.round(a / b * 100) : 0;
   const pbar = (p, done) => el('div', { class: 'pbar' + (done ? ' done' : '') }, el('i', { style: `width:${Math.min(100, p)}%` }));
-  const tile = (k, v, s, cls) => el('div', { class: 'stat' }, el('div', { class: 'k', text: k }), el('div', { class: 'v ' + (cls || ''), text: v }), el('div', { class: 's', text: s || '' }));
+  const tile = (k, v, s, cls) => el('div', { class: 'stat' }, el('div', { class: 'k', text: k }), el('div', { class: 'v ' + (cls || ''), text: v }), el('div', { class: 's', text: s && s !== v ? s : '' }));
   const people = (k) => S.lang === 'ko' ? `${k}${T('unitP')}` : String(k);
   function thead(tbl, cols) { tbl.append(el('thead', {}, el('tr', {}, cols.map(([k, cls]) => el('th', { class: cls || '', text: k }))))); }
   function emptyRow(tb, span, msg) { tb.append(el('tr', {}, el('td', { class: 'empty-row', colspan: span, text: msg }))); }
